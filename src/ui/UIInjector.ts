@@ -28,10 +28,10 @@ const CSS = `
 
   #chapshuffule-queue {
     position: fixed;
-    bottom: 72px;
+    bottom: 80px;
     right: 24px;
     width: 300px;
-    max-height: calc(100vh - 160px);
+    max-height: 420px;
     overflow-y: auto;
     background: rgba(15, 15, 15, 0.93);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -76,6 +76,18 @@ const CSS = `
     white-space: nowrap;
   }
   #chapshuffule-reshuffle:hover { background: rgba(255,255,255,0.16); }
+
+  #chapshuffule-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 0 0 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #chapshuffule-close:hover { color: #fff; }
 
   .chapshuffule-item {
     display: flex;
@@ -236,8 +248,19 @@ export class UIInjector {
       this._onReshuffle();
     });
 
+    const closeBtn = this._doc.createElement('button');
+    closeBtn.id = 'chapshuffule-close';
+    closeBtn.textContent = '✕';
+    closeBtn.title = 'Close queue';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this._togglePanel();
+    });
+
     header.appendChild(title);
     header.appendChild(reshuffleBtn);
+    header.appendChild(closeBtn);
     panel.appendChild(header);
 
     chapters.forEach((chapter, i) => panel.appendChild(this._buildQueueItem(chapter, i)));

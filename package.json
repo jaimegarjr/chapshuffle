@@ -1,0 +1,15 @@
+{
+  "name": "chapshuffule",
+  "version": "0.1.0",
+  "description": "Shuffle YouTube video chapters — Chrome extension",
+  "private": true,
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}

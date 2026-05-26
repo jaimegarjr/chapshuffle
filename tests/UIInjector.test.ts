@@ -67,7 +67,6 @@ function addVideoElement(doc: Document): HTMLVideoElement {
   return video;
 }
 
-// Flush all pending timers and promises in one shot.
 async function flushAll(): Promise<void> {
   jest.runAllTimers();
   await Promise.resolve();
@@ -91,11 +90,10 @@ describe('UIInjector — injection guard', () => {
     injector.destroy();
   });
 
-  test('injects shuffle button when 5+ chapters are present', async () => {
+  test('injects toggle button when 5+ chapters are present', async () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ shuffleEnabled: true });
 
     const injector = new UIInjector(document);
     await injector.init();
@@ -106,15 +104,14 @@ describe('UIInjector — injection guard', () => {
   });
 });
 
-describe('UIInjector — queue panel', () => {
+describe('UIInjector — queue panel visibility', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  test('renders a row for each chapter with title and original timestamp', async () => {
+  test('queue panel starts hidden', async () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ shuffleEnabled: true });
 
     const injector = new UIInjector(document);
     await injector.init();
@@ -122,10 +119,62 @@ describe('UIInjector — queue panel', () => {
 
     const panel = document.getElementById('chapshuffule-queue')!;
     expect(panel).not.toBeNull();
+    expect(panel.style.display).toBe('none');
+    injector.destroy();
+  });
+
+  test('clicking the toggle button shows the panel', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    const btn = document.getElementById('chapshuffule-btn') as HTMLButtonElement;
+    btn.click();
+
+    expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('block');
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    injector.destroy();
+  });
+
+  test('clicking the toggle button a second time hides the panel', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    const btn = document.getElementById('chapshuffule-btn') as HTMLButtonElement;
+    btn.click(); // open
+    btn.click(); // close
+
+    expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('none');
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    injector.destroy();
+  });
+});
+
+describe('UIInjector — queue panel content', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  test('renders a row for each chapter with title and timestamp', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    const panel = document.getElementById('chapshuffule-queue')!;
     const rows = panel.querySelectorAll('.chapshuffule-item');
     expect(rows.length).toBe(5);
-
-    // Every row has a title and a timestamp element.
     rows.forEach((row) => {
       expect(row.querySelector('.chapshuffule-title')).not.toBeNull();
       expect(row.querySelector('.chapshuffule-time')).not.toBeNull();
@@ -133,37 +182,30 @@ describe('UIInjector — queue panel', () => {
 
     injector.destroy();
   });
-});
 
-describe('UIInjector — global toggle', () => {
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => jest.useRealTimers());
-
-  test('toggle is present after injection', async () => {
+  test('panel has a Reshuffle button', async () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ shuffleEnabled: true });
 
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
 
-    expect(document.getElementById('chapshuffule-toggle')).not.toBeNull();
+    expect(document.getElementById('chapshuffule-reshuffle')).not.toBeNull();
     injector.destroy();
   });
 
-  test('toggle checkbox reflects stored shuffle state (off by default)', async () => {
+  test('global toggle overlay is NOT injected into the page', async () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
-    // shuffleEnabled not set → defaults to false
+    addVideoElement(document);
+
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
 
-    const label = document.getElementById('chapshuffule-toggle');
-    const cb = label?.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    expect(cb?.checked).toBe(false);
+    expect(document.getElementById('chapshuffule-toggle')).toBeNull();
     injector.destroy();
   });
 });
@@ -176,7 +218,6 @@ describe('UIInjector — cleanup', () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ shuffleEnabled: true });
 
     const injector = new UIInjector(document);
     await injector.init();
@@ -186,6 +227,5 @@ describe('UIInjector — cleanup', () => {
 
     expect(document.getElementById('chapshuffule-btn')).toBeNull();
     expect(document.getElementById('chapshuffule-queue')).toBeNull();
-    expect(document.getElementById('chapshuffule-toggle')).toBeNull();
   });
 });

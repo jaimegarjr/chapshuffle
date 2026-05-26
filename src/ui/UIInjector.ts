@@ -1,14 +1,13 @@
 import type { Chapter } from '../types';
 import { parse as parseChapters } from '../parser/ChapterParser';
 import { PlaybackController } from '../playback/PlaybackController';
-import { getShuffleEnabled, setShuffleEnabled } from '../persistence/PersistenceManager';
+import { getShuffleEnabled } from '../persistence/PersistenceManager';
 
 const CONTROLS_SEL = '.ytp-right-controls';
 const VIDEO_SEL = 'video';
 const STYLES_ID = 'chapshuffule-styles';
 const PANEL_ID = 'chapshuffule-queue';
 const BTN_ID = 'chapshuffule-btn';
-const TOGGLE_ID = 'chapshuffule-toggle';
 const ACTIVE_CLASS = 'chapshuffule-active';
 const POLL_INTERVAL_MS = 500;
 
@@ -25,6 +24,7 @@ const CSS = `
     vertical-align: middle;
   }
   #chapshuffule-btn:hover { opacity: 1; }
+  #chapshuffule-btn[aria-expanded="true"] { opacity: 1; color: #f00; }
 
   #chapshuffule-queue {
     position: fixed;
@@ -34,30 +34,45 @@ const CSS = `
     width: 300px;
     max-height: 60vh;
     overflow-y: auto;
-    background: rgba(15, 15, 15, 0.92);
+    background: rgba(15, 15, 15, 0.93);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 10px;
-    padding: 10px 0;
+    padding: 0 0 6px;
     z-index: 2147483647;
     color: #fff;
     font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
     font-size: 13px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.65);
   }
 
   #chapshuffule-queue-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 14px 10px;
+    padding: 10px 14px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    gap: 8px;
+  }
+  #chapshuffule-queue-title {
     font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    opacity: 0.6;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 4px;
+    opacity: 0.55;
+    flex: 1;
   }
+  #chapshuffule-reshuffle {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  #chapshuffule-reshuffle:hover { background: rgba(255,255,255,0.16); }
 
   .chapshuffule-item {
     display: flex;
@@ -75,7 +90,6 @@ const CSS = `
     background: rgba(255, 0, 0, 0.12);
     font-weight: 600;
   }
-
   .chapshuffule-title {
     flex: 1;
     overflow: hidden;
@@ -83,32 +97,11 @@ const CSS = `
     white-space: nowrap;
   }
   .chapshuffule-time {
-    opacity: 0.55;
+    opacity: 0.5;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     font-size: 12px;
   }
-
-  #chapshuffule-toggle {
-    position: fixed;
-    bottom: 72px;
-    right: 24px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #fff;
-    background: rgba(15, 15, 15, 0.85);
-    border: 1px solid rgba(255,255,255,0.15);
-    padding: 6px 12px;
-    border-radius: 20px;
-    z-index: 2147483647;
-    cursor: pointer;
-    font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
-    font-size: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    user-select: none;
-  }
-  #chapshuffule-toggle input { cursor: pointer; accent-color: #f00; }
 `;
 
 export class UIInjector {
@@ -137,8 +130,8 @@ export class UIInjector {
     (this._doc.head ?? this._doc.documentElement).appendChild(style);
   }
 
-  // Watches document.body for child mutations; on a URL change (YouTube SPA
-  // navigation), tears down the current session and starts fresh for the new video.
+  // Watches document.body for URL changes (YouTube SPA navigation) and
+  // re-initialises for the new video.
   private _startObserver(): void {
     if (!this._doc.body) return;
     let lastUrl = this._doc.location?.href ?? '';
@@ -153,8 +146,6 @@ export class UIInjector {
     this._observer.observe(this._doc.body, { childList: true, subtree: true });
   }
 
-  // Polls every 500 ms until the YouTube player controls are present, then
-  // checks for chapters and injects the UI if ≥ 5 chapters are found.
   private _startPoll(): void {
     this._pollTimer = setInterval(() => {
       const controls = this._doc.querySelector(CONTROLS_SEL);
@@ -171,39 +162,80 @@ export class UIInjector {
   }
 
   private _inject(chapters: Chapter[], controlsBar: Element): void {
-    controlsBar.prepend(this._buildShuffleButton());
-    this._doc.body.appendChild(this._buildQueuePanel(chapters));
-    this._doc.body.appendChild(this._buildGlobalToggle());
+    // Panel is hidden until the user clicks ⇄.
+    const panel = this._buildQueuePanel(chapters);
+    panel.style.display = 'none';
+    this._doc.body.appendChild(panel);
 
-    if (!this._shuffleEnabled) return;
+    controlsBar.prepend(this._buildToggleButton());
 
-    const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-    if (!video) return;
-
-    this._controller = new PlaybackController(video, chapters);
-    this._updateHighlight();
+    if (this._shuffleEnabled) {
+      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
+      if (video) {
+        this._controller = new PlaybackController(video, chapters);
+        this._updateHighlight();
+      }
+    }
   }
 
-  private _buildShuffleButton(): HTMLButtonElement {
+  // ⇄ button: toggles the queue panel open/closed.
+  private _buildToggleButton(): HTMLButtonElement {
     const btn = this._doc.createElement('button');
     btn.id = BTN_ID;
     btn.textContent = '⇄';
-    btn.title = 'ChapShuffle: reshuffle chapters';
+    btn.title = 'ChapShuffle: open queue';
+    btn.setAttribute('aria-expanded', 'false');
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      this._onReshuffle();
+      this._togglePanel();
     });
     return btn;
+  }
+
+  private _togglePanel(): void {
+    const panel = this._doc.getElementById(PANEL_ID);
+    const btn = this._doc.getElementById(BTN_ID);
+    if (!panel) return;
+
+    const opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    btn?.setAttribute('aria-expanded', String(opening));
+    btn!.title = opening ? 'ChapShuffle: close queue' : 'ChapShuffle: open queue';
+
+    // Lazily activate the controller on first open if not already running.
+    if (opening && !this._controller) {
+      const chapters = parseChapters(this._doc);
+      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
+      if (chapters && video) {
+        this._controller = new PlaybackController(video, chapters);
+        this._updateHighlight();
+      }
+    }
   }
 
   private _buildQueuePanel(chapters: Chapter[]): HTMLDivElement {
     const panel = this._doc.createElement('div');
     panel.id = PANEL_ID;
 
+    // Header row: label + Reshuffle button.
     const header = this._doc.createElement('div');
     header.id = 'chapshuffule-queue-header';
-    header.textContent = 'ChapShuffle Queue';
+
+    const title = this._doc.createElement('span');
+    title.id = 'chapshuffule-queue-title';
+    title.textContent = 'Shuffle Queue';
+
+    const reshuffleBtn = this._doc.createElement('button');
+    reshuffleBtn.id = 'chapshuffule-reshuffle';
+    reshuffleBtn.textContent = '⇄ Reshuffle';
+    reshuffleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._onReshuffle();
+    });
+
+    header.appendChild(title);
+    header.appendChild(reshuffleBtn);
     panel.appendChild(header);
 
     chapters.forEach((chapter, i) => {
@@ -232,24 +264,6 @@ export class UIInjector {
     return panel;
   }
 
-  private _buildGlobalToggle(): HTMLLabelElement {
-    const label = this._doc.createElement('label');
-    label.id = TOGGLE_ID;
-
-    const cb = this._doc.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = this._shuffleEnabled;
-    cb.addEventListener('change', async (e) => {
-      e.stopPropagation();
-      this._shuffleEnabled = cb.checked;
-      await setShuffleEnabled(this._shuffleEnabled);
-    });
-
-    label.appendChild(cb);
-    label.appendChild(this._doc.createTextNode(' ChapShuffle'));
-    return label;
-  }
-
   private _updateHighlight(): void {
     if (!this._controller) return;
     const panel = this._doc.getElementById(PANEL_ID);
@@ -262,25 +276,14 @@ export class UIInjector {
   private _onReshuffle(): void {
     if (this._controller) {
       this._controller.reshuffle();
-      this._updateHighlight();
     } else {
-      // Shuffle wasn't active — enable it now and wire up the controller.
-      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      const panel = this._doc.getElementById(PANEL_ID);
-      if (!video || !panel) return;
-
       const chapters = parseChapters(this._doc);
-      if (!chapters) return;
-
-      this._controller = new PlaybackController(video, chapters);
-      this._shuffleEnabled = true;
-      setShuffleEnabled(true);
-
-      const cb = this._doc.querySelector<HTMLInputElement>(`#${TOGGLE_ID} input`);
-      if (cb) cb.checked = true;
-
-      this._updateHighlight();
+      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
+      if (chapters && video) {
+        this._controller = new PlaybackController(video, chapters);
+      }
     }
+    this._updateHighlight();
   }
 
   private _cleanup(): void {
@@ -292,12 +295,11 @@ export class UIInjector {
       this._pollTimer = null;
     }
 
-    for (const id of [BTN_ID, PANEL_ID, TOGGLE_ID]) {
+    for (const id of [BTN_ID, PANEL_ID]) {
       this._doc.getElementById(id)?.remove();
     }
   }
 
-  /** Disconnects the MutationObserver and removes all injected elements. */
   destroy(): void {
     this._observer?.disconnect();
     this._observer = null;

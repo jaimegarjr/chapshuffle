@@ -28,11 +28,10 @@ const CSS = `
 
   #chapshuffule-queue {
     position: fixed;
-    top: 50%;
+    bottom: 72px;
     right: 24px;
-    transform: translateY(-50%);
     width: 300px;
-    max-height: 60vh;
+    max-height: calc(100vh - 160px);
     overflow-y: auto;
     background: rgba(15, 15, 15, 0.93);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -49,9 +48,13 @@ const CSS = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px 10px;
+    padding: 10px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     gap: 8px;
+    position: sticky;
+    top: 0;
+    background: rgba(15, 15, 15, 0.97);
+    border-radius: 10px 10px 0 0;
   }
   #chapshuffule-queue-title {
     font-size: 12px;
@@ -109,14 +112,13 @@ export class UIInjector {
   private _controller: PlaybackController | null = null;
   private _observer: MutationObserver | null = null;
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
-  private _shuffleEnabled = false;
 
   constructor(doc: Document = document) {
     this._doc = doc;
   }
 
   async init(): Promise<void> {
-    this._shuffleEnabled = await getShuffleEnabled();
+    await getShuffleEnabled(); // warm storage; value reserved for future per-video opt-out
     this._injectStyles();
     this._startObserver();
     this._startPoll();
@@ -130,8 +132,6 @@ export class UIInjector {
     (this._doc.head ?? this._doc.documentElement).appendChild(style);
   }
 
-  // Watches document.body for URL changes (YouTube SPA navigation) and
-  // re-initialises for the new video.
   private _startObserver(): void {
     if (!this._doc.body) return;
     let lastUrl = this._doc.location?.href ?? '';
@@ -148,6 +148,14 @@ export class UIInjector {
 
   private _startPoll(): void {
     this._pollTimer = setInterval(() => {
+      // Guard: stop if already injected (MutationObserver can re-trigger before
+      // clearInterval takes effect when our own DOM writes fire it).
+      if (this._doc.getElementById(BTN_ID)) {
+        clearInterval(this._pollTimer!);
+        this._pollTimer = null;
+        return;
+      }
+
       const controls = this._doc.querySelector(CONTROLS_SEL);
       if (!controls) return;
 
@@ -162,23 +170,26 @@ export class UIInjector {
   }
 
   private _inject(chapters: Chapter[], controlsBar: Element): void {
-    // Panel is hidden until the user clicks ⇄.
-    const panel = this._buildQueuePanel(chapters);
-    panel.style.display = 'none';
+    // Double-injection guard — our own DOM writes can re-trigger the observer.
+    if (this._doc.getElementById(BTN_ID)) return;
+
+    // Create the controller first so the panel displays the shuffled queue order.
+    const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
+    if (video) {
+      this._controller = new PlaybackController(video, chapters);
+    }
+
+    // Build queue panel using the shuffled order from the controller.
+    const queueOrder = this._controller ? this._controller.queue : chapters;
+    const panel = this._buildQueuePanel(queueOrder);
+    panel.style.display = 'none'; // hidden until user clicks ⇄
     this._doc.body.appendChild(panel);
 
     controlsBar.prepend(this._buildToggleButton());
-
-    if (this._shuffleEnabled) {
-      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      if (video) {
-        this._controller = new PlaybackController(video, chapters);
-        this._updateHighlight();
-      }
-    }
+    this._updateHighlight();
   }
 
-  // ⇄ button: toggles the queue panel open/closed.
+  // ⇄ button: opens/closes the queue panel.
   private _buildToggleButton(): HTMLButtonElement {
     const btn = this._doc.createElement('button');
     btn.id = BTN_ID;
@@ -201,24 +212,15 @@ export class UIInjector {
     const opening = panel.style.display === 'none';
     panel.style.display = opening ? 'block' : 'none';
     btn?.setAttribute('aria-expanded', String(opening));
-    btn!.title = opening ? 'ChapShuffle: close queue' : 'ChapShuffle: open queue';
+    if (btn) btn.title = opening ? 'ChapShuffle: close queue' : 'ChapShuffle: open queue';
 
-    // Lazily activate the controller on first open if not already running.
-    if (opening && !this._controller) {
-      const chapters = parseChapters(this._doc);
-      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      if (chapters && video) {
-        this._controller = new PlaybackController(video, chapters);
-        this._updateHighlight();
-      }
-    }
+    if (opening) this._updateHighlight();
   }
 
   private _buildQueuePanel(chapters: Chapter[]): HTMLDivElement {
     const panel = this._doc.createElement('div');
     panel.id = PANEL_ID;
 
-    // Header row: label + Reshuffle button.
     const header = this._doc.createElement('div');
     header.id = 'chapshuffule-queue-header';
 
@@ -238,30 +240,43 @@ export class UIInjector {
     header.appendChild(reshuffleBtn);
     panel.appendChild(header);
 
-    chapters.forEach((chapter, i) => {
-      const item = this._doc.createElement('div');
-      item.dataset['index'] = String(i);
-      item.className = 'chapshuffule-item';
-
-      const titleEl = this._doc.createElement('span');
-      titleEl.className = 'chapshuffule-title';
-      titleEl.textContent = chapter.title;
-
-      const timeEl = this._doc.createElement('span');
-      timeEl.className = 'chapshuffule-time';
-      timeEl.textContent = secondsToTimestamp(chapter.startSeconds);
-
-      item.appendChild(titleEl);
-      item.appendChild(timeEl);
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._controller?.seekToChapter(i);
-        this._updateHighlight();
-      });
-      panel.appendChild(item);
-    });
-
+    chapters.forEach((chapter, i) => panel.appendChild(this._buildQueueItem(chapter, i)));
     return panel;
+  }
+
+  private _buildQueueItem(chapter: Chapter, i: number): HTMLDivElement {
+    const item = this._doc.createElement('div');
+    item.dataset['index'] = String(i);
+    item.className = 'chapshuffule-item';
+
+    const titleEl = this._doc.createElement('span');
+    titleEl.className = 'chapshuffule-title';
+    titleEl.textContent = chapter.title;
+
+    const timeEl = this._doc.createElement('span');
+    timeEl.className = 'chapshuffule-time';
+    timeEl.textContent = secondsToTimestamp(chapter.startSeconds);
+
+    item.appendChild(titleEl);
+    item.appendChild(timeEl);
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Index i maps directly into the controller's shuffled queue because
+      // the panel was built from controller.queue in the same order.
+      this._controller?.seekToChapter(i);
+      this._updateHighlight();
+    });
+    return item;
+  }
+
+  // Replaces the chapter rows in the panel with the controller's current queue.
+  private _rebuildQueueItems(): void {
+    const panel = this._doc.getElementById(PANEL_ID);
+    if (!panel || !this._controller) return;
+    panel.querySelectorAll('.chapshuffule-item').forEach((el) => el.remove());
+    this._controller.queue.forEach((chapter, i) =>
+      panel.appendChild(this._buildQueueItem(chapter, i))
+    );
   }
 
   private _updateHighlight(): void {
@@ -274,15 +289,15 @@ export class UIInjector {
   }
 
   private _onReshuffle(): void {
-    if (this._controller) {
-      this._controller.reshuffle();
-    } else {
+    if (!this._controller) {
       const chapters = parseChapters(this._doc);
       const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      if (chapters && video) {
-        this._controller = new PlaybackController(video, chapters);
-      }
+      if (chapters && video) this._controller = new PlaybackController(video, chapters);
+    } else {
+      this._controller.reshuffle();
     }
+    // Rebuild panel rows to reflect the new shuffle order, then re-highlight.
+    this._rebuildQueueItems();
     this._updateHighlight();
   }
 

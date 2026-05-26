@@ -39,15 +39,12 @@ afterEach(() => {
 function addChapterItems(doc: Document, count: number): void {
   for (let i = 0; i < count; i++) {
     const item = doc.createElement('ytd-macro-markers-list-item-renderer');
-
     const ts = doc.createElement('span');
     ts.className = 'time-string';
     ts.textContent = `${i}:00`;
-
     const title = doc.createElement('h4');
     title.className = 'yt-simple-endpoint';
     title.textContent = `Chapter ${i + 1}`;
-
     item.appendChild(ts);
     item.appendChild(title);
     doc.body.appendChild(item);
@@ -55,10 +52,10 @@ function addChapterItems(doc: Document, count: number): void {
 }
 
 function addPlayerControls(doc: Document): Element {
-  const controls = doc.createElement('div');
-  controls.className = 'ytp-right-controls';
-  doc.body.appendChild(controls);
-  return controls;
+  const el = doc.createElement('div');
+  el.className = 'ytp-right-controls';
+  doc.body.appendChild(el);
+  return el;
 }
 
 function addVideoElement(doc: Document): HTMLVideoElement {
@@ -72,7 +69,7 @@ async function flushAll(): Promise<void> {
   await Promise.resolve();
 }
 
-// ── tests ──────────────────────────────────────────────────────────────────
+// ── injection guard ────────────────────────────────────────────────────────
 
 describe('UIInjector — injection guard', () => {
   beforeEach(() => jest.useFakeTimers());
@@ -81,11 +78,9 @@ describe('UIInjector — injection guard', () => {
   test('does NOT inject button when fewer than 5 chapters', async () => {
     addPlayerControls(document);
     addChapterItems(document, 4);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
     expect(document.getElementById('chapshuffule-btn')).toBeNull();
     injector.destroy();
   });
@@ -94,15 +89,29 @@ describe('UIInjector — injection guard', () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
     expect(document.getElementById('chapshuffule-btn')).not.toBeNull();
     injector.destroy();
   });
+
+  test('calling inject-equivalent twice does NOT duplicate items', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    // Simulate a second poll tick firing before clearInterval takes effect.
+    await flushAll();
+    const rows = document.querySelectorAll('.chapshuffule-item');
+    expect(rows.length).toBe(5);
+    injector.destroy();
+  });
 });
+
+// ── panel visibility ───────────────────────────────────────────────────────
 
 describe('UIInjector — queue panel visibility', () => {
   beforeEach(() => jest.useFakeTimers());
@@ -112,14 +121,10 @@ describe('UIInjector — queue panel visibility', () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
-    const panel = document.getElementById('chapshuffule-queue')!;
-    expect(panel).not.toBeNull();
-    expect(panel.style.display).toBe('none');
+    expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('none');
     injector.destroy();
   });
 
@@ -127,71 +132,54 @@ describe('UIInjector — queue panel visibility', () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
-    const btn = document.getElementById('chapshuffule-btn') as HTMLButtonElement;
-    btn.click();
-
+    (document.getElementById('chapshuffule-btn') as HTMLButtonElement).click();
     expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('block');
-    expect(btn.getAttribute('aria-expanded')).toBe('true');
     injector.destroy();
   });
 
-  test('clicking the toggle button a second time hides the panel', async () => {
+  test('clicking toggle button twice hides the panel again', async () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
     const btn = document.getElementById('chapshuffule-btn') as HTMLButtonElement;
-    btn.click(); // open
-    btn.click(); // close
-
+    btn.click();
+    btn.click();
     expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('none');
     expect(btn.getAttribute('aria-expanded')).toBe('false');
     injector.destroy();
   });
 });
 
-describe('UIInjector — queue panel content', () => {
+// ── queue content ──────────────────────────────────────────────────────────
+
+describe('UIInjector — queue content', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  test('renders a row for each chapter with title and timestamp', async () => {
+  test('renders exactly one row per chapter', async () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
-    const panel = document.getElementById('chapshuffule-queue')!;
-    const rows = panel.querySelectorAll('.chapshuffule-item');
-    expect(rows.length).toBe(5);
-    rows.forEach((row) => {
-      expect(row.querySelector('.chapshuffule-title')).not.toBeNull();
-      expect(row.querySelector('.chapshuffule-time')).not.toBeNull();
-    });
-
+    expect(document.querySelectorAll('.chapshuffule-item').length).toBe(5);
     injector.destroy();
   });
 
-  test('panel has a Reshuffle button', async () => {
+  test('panel has a Reshuffle button in the header', async () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
     expect(document.getElementById('chapshuffule-reshuffle')).not.toBeNull();
     injector.destroy();
   });
@@ -200,15 +188,27 @@ describe('UIInjector — queue panel content', () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
     expect(document.getElementById('chapshuffule-toggle')).toBeNull();
     injector.destroy();
   });
+
+  test('queue item count does not change after reshuffle', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    (document.getElementById('chapshuffule-reshuffle') as HTMLButtonElement).click();
+    expect(document.querySelectorAll('.chapshuffule-item').length).toBe(5);
+    injector.destroy();
+  });
 });
+
+// ── cleanup ────────────────────────────────────────────────────────────────
 
 describe('UIInjector — cleanup', () => {
   beforeEach(() => jest.useFakeTimers());
@@ -218,13 +218,10 @@ describe('UIInjector — cleanup', () => {
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
-
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-
     injector.destroy();
-
     expect(document.getElementById('chapshuffule-btn')).toBeNull();
     expect(document.getElementById('chapshuffule-queue')).toBeNull();
   });

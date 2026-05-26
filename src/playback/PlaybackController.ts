@@ -3,6 +3,10 @@ import { shuffle as defaultShuffle } from '../shuffle/ShuffleEngine';
 
 type ShuffleFn = (chapters: Chapter[]) => Chapter[];
 
+function dbg(...args: unknown[]): void {
+  console.debug('[ChapShuffle]', ...args);
+}
+
 export class PlaybackController {
   private readonly _video: HTMLVideoElement;
   private readonly _sorted: Chapter[];
@@ -23,6 +27,14 @@ export class PlaybackController {
     this._queue = this._shuffleFn([...this._sorted]);
     this._bound = this._onTimeUpdate.bind(this);
     videoEl.addEventListener('timeupdate', this._bound);
+    dbg(
+      'created — sorted:',
+      this._sorted.map((c) => `${c.title}@${c.startSeconds}s`).join(', '),
+    );
+    dbg(
+      'initial queue:',
+      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', '),
+    );
   }
 
   get currentIndex(): number {
@@ -35,15 +47,26 @@ export class PlaybackController {
 
   private _endSecondsFor(chapter: Chapter): number {
     const i = this._sorted.findIndex((c) => c.startSeconds === chapter.startSeconds);
-    return i >= 0 && i < this._sorted.length - 1
-      ? this._sorted[i + 1].startSeconds
-      : Infinity;
+    if (i < 0) {
+      dbg(`WARN: chapter "${chapter.title}" (${chapter.startSeconds}s) not found in _sorted — returning Infinity`);
+      return Infinity;
+    }
+    const end =
+      i < this._sorted.length - 1 ? this._sorted[i + 1].startSeconds : Infinity;
+    return end;
   }
 
   private _seek(index: number): void {
+    const chapter = this._queue[index];
+    const prevTime = this._video.currentTime;
     this._currentIndex = index;
-    this._seekTarget = this._queue[index].startSeconds;
+    this._seekTarget = chapter.startSeconds;
     this._video.currentTime = this._seekTarget;
+    dbg(
+      `seek → [${index}] "${chapter.title}" start=${chapter.startSeconds}s` +
+        ` end=${this._endSecondsFor(chapter)}s` +
+        ` (was currentTime=${prevTime.toFixed(2)}, _seekTarget=${this._seekTarget})`,
+    );
   }
 
   private _onTimeUpdate(): void {
@@ -53,25 +76,48 @@ export class PlaybackController {
     // the seek target. A stale currentTime from before the seek would
     // otherwise satisfy the boundary check and immediately skip the chapter.
     if (this._seekTarget !== null) {
-      if (Math.abs(currentTime - this._seekTarget) > 2) return;
-      this._seekTarget = null; // playhead has landed — resume normal tracking
+      const delta = Math.abs(currentTime - this._seekTarget);
+      if (delta > 2) {
+        dbg(
+          `timeupdate SUPPRESSED — currentTime=${currentTime.toFixed(2)}` +
+            ` _seekTarget=${this._seekTarget} delta=${delta.toFixed(2)}`,
+        );
+        return;
+      }
+      dbg(
+        `timeupdate: seek settled — currentTime=${currentTime.toFixed(2)}` +
+          ` _seekTarget=${this._seekTarget} delta=${delta.toFixed(2)} → guard cleared`,
+      );
+      this._seekTarget = null;
     }
 
     const chapter = this._queue[this._currentIndex];
-    if (currentTime >= this._endSecondsFor(chapter)) {
-      this._seek((this._currentIndex + 1) % this._queue.length);
+    const end = this._endSecondsFor(chapter);
+
+    if (currentTime >= end) {
+      const nextIndex = (this._currentIndex + 1) % this._queue.length;
+      dbg(
+        `AUTO-ADVANCE — currentTime=${currentTime.toFixed(2)} >= end=${end}` +
+          ` "[${this._currentIndex}]${chapter.title}" → "[${nextIndex}]${this._queue[nextIndex].title}"`,
+      );
+      this._seek(nextIndex);
     }
   }
 
   /** Seeks to a specific chapter in the shuffled queue by index. No-ops for out-of-range. */
   seekToChapter(index: number): void {
     if (index < 0 || index >= this._queue.length) return;
+    dbg(`seekToChapter(${index}) called — queue[${index}]="${this._queue[index].title}"`);
     this._seek(index);
   }
 
   /** Generates a fresh shuffle order and restarts playback from queue index 0. */
   reshuffle(): void {
     this._queue = this._shuffleFn([...this._sorted]);
+    dbg(
+      'reshuffle — new queue:',
+      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', '),
+    );
     this._seek(0);
   }
 

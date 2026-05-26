@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
 
 const manifest = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8')
@@ -23,10 +23,10 @@ describe('manifest.json', () => {
   test('content script matches youtube.com pages', () => {
     const cs = manifest.content_scripts[0];
     expect(cs.matches).toContain('https://www.youtube.com/*');
-    expect(cs.js).toContain('src/content.js');
+    expect(cs.js).toContain('content.js');
   });
 
   test('background service worker is declared', () => {
-    expect(manifest.background.service_worker).toBe('src/background.js');
+    expect(manifest.background.service_worker).toBe('background.js');
   });
 });

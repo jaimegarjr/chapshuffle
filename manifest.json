@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Chap Shuffle",
+  "version": "0.1.0",
+  "description": "Shuffle YouTube video chapters for a randomized viewing experience.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  }
+}

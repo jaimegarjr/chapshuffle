@@ -5,11 +5,111 @@ import { getShuffleEnabled, setShuffleEnabled } from '../persistence/Persistence
 
 const CONTROLS_SEL = '.ytp-right-controls';
 const VIDEO_SEL = 'video';
+const STYLES_ID = 'chapshuffule-styles';
 const PANEL_ID = 'chapshuffule-queue';
 const BTN_ID = 'chapshuffule-btn';
 const TOGGLE_ID = 'chapshuffule-toggle';
 const ACTIVE_CLASS = 'chapshuffule-active';
 const POLL_INTERVAL_MS = 500;
+
+const CSS = `
+  #chapshuffule-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 8px;
+    opacity: 0.85;
+    vertical-align: middle;
+  }
+  #chapshuffule-btn:hover { opacity: 1; }
+
+  #chapshuffule-queue {
+    position: fixed;
+    top: 50%;
+    right: 24px;
+    transform: translateY(-50%);
+    width: 300px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: rgba(15, 15, 15, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 10px 0;
+    z-index: 2147483647;
+    color: #fff;
+    font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
+    font-size: 13px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  }
+
+  #chapshuffule-queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 14px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 4px;
+  }
+
+  .chapshuffule-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    cursor: pointer;
+    gap: 10px;
+    border-left: 3px solid transparent;
+    transition: background 0.1s;
+  }
+  .chapshuffule-item:hover { background: rgba(255,255,255,0.08); }
+  .chapshuffule-item.chapshuffule-active {
+    border-left-color: #f00;
+    background: rgba(255, 0, 0, 0.12);
+    font-weight: 600;
+  }
+
+  .chapshuffule-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chapshuffule-time {
+    opacity: 0.55;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+  }
+
+  #chapshuffule-toggle {
+    position: fixed;
+    bottom: 72px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #fff;
+    background: rgba(15, 15, 15, 0.85);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 6px 12px;
+    border-radius: 20px;
+    z-index: 2147483647;
+    cursor: pointer;
+    font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
+    font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    user-select: none;
+  }
+  #chapshuffule-toggle input { cursor: pointer; accent-color: #f00; }
+`;
 
 export class UIInjector {
   private readonly _doc: Document;
@@ -24,8 +124,17 @@ export class UIInjector {
 
   async init(): Promise<void> {
     this._shuffleEnabled = await getShuffleEnabled();
+    this._injectStyles();
     this._startObserver();
     this._startPoll();
+  }
+
+  private _injectStyles(): void {
+    if (this._doc.getElementById(STYLES_ID)) return;
+    const style = this._doc.createElement('style');
+    style.id = STYLES_ID;
+    style.textContent = CSS;
+    (this._doc.head ?? this._doc.documentElement).appendChild(style);
   }
 
   // Watches document.body for child mutations; on a URL change (YouTube SPA
@@ -58,7 +167,6 @@ export class UIInjector {
       if (chapters && chapters.length >= 5) {
         this._inject(chapters, controls);
       }
-      // Fewer than 5 chapters → button stays hidden; nothing to inject.
     }, POLL_INTERVAL_MS);
   }
 
@@ -81,13 +189,22 @@ export class UIInjector {
     btn.id = BTN_ID;
     btn.textContent = '⇄';
     btn.title = 'ChapShuffle: reshuffle chapters';
-    btn.addEventListener('click', () => this._onReshuffle());
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this._onReshuffle();
+    });
     return btn;
   }
 
   private _buildQueuePanel(chapters: Chapter[]): HTMLDivElement {
     const panel = this._doc.createElement('div');
     panel.id = PANEL_ID;
+
+    const header = this._doc.createElement('div');
+    header.id = 'chapshuffule-queue-header';
+    header.textContent = 'ChapShuffle Queue';
+    panel.appendChild(header);
 
     chapters.forEach((chapter, i) => {
       const item = this._doc.createElement('div');
@@ -104,7 +221,8 @@ export class UIInjector {
 
       item.appendChild(titleEl);
       item.appendChild(timeEl);
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
         this._controller?.seekToChapter(i);
         this._updateHighlight();
       });
@@ -121,7 +239,8 @@ export class UIInjector {
     const cb = this._doc.createElement('input');
     cb.type = 'checkbox';
     cb.checked = this._shuffleEnabled;
-    cb.addEventListener('change', async () => {
+    cb.addEventListener('change', async (e) => {
+      e.stopPropagation();
       this._shuffleEnabled = cb.checked;
       await setShuffleEnabled(this._shuffleEnabled);
     });
@@ -141,8 +260,27 @@ export class UIInjector {
   }
 
   private _onReshuffle(): void {
-    this._controller?.reshuffle();
-    this._updateHighlight();
+    if (this._controller) {
+      this._controller.reshuffle();
+      this._updateHighlight();
+    } else {
+      // Shuffle wasn't active — enable it now and wire up the controller.
+      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
+      const panel = this._doc.getElementById(PANEL_ID);
+      if (!video || !panel) return;
+
+      const chapters = parseChapters(this._doc);
+      if (!chapters) return;
+
+      this._controller = new PlaybackController(video, chapters);
+      this._shuffleEnabled = true;
+      setShuffleEnabled(true);
+
+      const cb = this._doc.querySelector<HTMLInputElement>(`#${TOGGLE_ID} input`);
+      if (cb) cb.checked = true;
+
+      this._updateHighlight();
+    }
   }
 
   private _cleanup(): void {

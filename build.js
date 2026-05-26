@@ -1,4 +1,4 @@
-// Bundles TypeScript source into dist/ and copies manifest.json so that
+// Bundles TypeScript source into dist/ and copies static assets so that
 // Chrome's "Load unpacked" only needs to be pointed at dist/.
 const esbuild = require('esbuild');
 const fs = require('fs');
@@ -8,6 +8,7 @@ const config = {
   entryPoints: {
     content: 'src/content.ts',
     background: 'src/background.ts',
+    popup: 'src/popup/popup.ts',
   },
   outdir: 'dist',
   bundle: true,
@@ -16,17 +17,18 @@ const config = {
   sourcemap: watch ? 'inline' : false,
 };
 
-function copyManifest() {
+function copyStatic() {
   fs.mkdirSync('dist', { recursive: true });
   fs.copyFileSync('manifest.json', 'dist/manifest.json');
+  fs.copyFileSync('src/popup/popup.html', 'dist/popup.html');
 }
 
 async function main() {
-  copyManifest();
+  copyStatic();
   const ctx = await esbuild.context(config);
   if (watch) {
     await ctx.watch();
-    console.log('[chapshuffule] watching — edit src/, then reload the extension card in chrome://extensions');
+    console.log('[chapshuffule] watching — reload the extension card in chrome://extensions after saving');
   } else {
     await ctx.rebuild();
     await ctx.dispose();

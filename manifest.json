@@ -10,6 +10,10 @@
   "host_permissions": [
     "https://www.youtube.com/*"
   ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ChapShuffle"
+  },
   "content_scripts": [
     {
       "matches": ["https://www.youtube.com/*"],

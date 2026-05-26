@@ -10,12 +10,12 @@ export class PlaybackController {
   private _queue: Chapter[];
   private _currentIndex = 0;
   private readonly _bound: () => void;
+  // Tracks the target currentTime after any programmatic seek. While set,
+  // timeupdate advances are suppressed until the browser's playhead settles
+  // within 2 s of the target — preventing stale pre-seek currentTime values
+  // from falsely triggering an immediate chapter advance.
+  private _seekTarget: number | null = null;
 
-  /**
-   * @param videoEl - The video element to observe.
-   * @param chapters - Original (unsorted) chapter list.
-   * @param shuffleFn - Override for testing; defaults to ShuffleEngine.shuffle.
-   */
   constructor(videoEl: HTMLVideoElement, chapters: Chapter[], shuffleFn?: ShuffleFn) {
     this._shuffleFn = shuffleFn ?? defaultShuffle;
     this._video = videoEl;
@@ -33,9 +33,6 @@ export class PlaybackController {
     return [...this._queue];
   }
 
-  // A chapter ends when currentTime reaches the next chapter's start in the
-  // original sorted order, keeping boundaries video-accurate regardless of
-  // shuffle order.
   private _endSecondsFor(chapter: Chapter): number {
     const i = this._sorted.findIndex((c) => c.startSeconds === chapter.startSeconds);
     return i >= 0 && i < this._sorted.length - 1
@@ -43,26 +40,39 @@ export class PlaybackController {
       : Infinity;
   }
 
+  private _seek(index: number): void {
+    this._currentIndex = index;
+    this._seekTarget = this._queue[index].startSeconds;
+    this._video.currentTime = this._seekTarget;
+  }
+
   private _onTimeUpdate(): void {
+    const currentTime = this._video.currentTime;
+
+    // Suppress advances while the browser hasn't yet moved the playhead to
+    // the seek target. A stale currentTime from before the seek would
+    // otherwise satisfy the boundary check and immediately skip the chapter.
+    if (this._seekTarget !== null) {
+      if (Math.abs(currentTime - this._seekTarget) > 2) return;
+      this._seekTarget = null; // playhead has landed — resume normal tracking
+    }
+
     const chapter = this._queue[this._currentIndex];
-    if (this._video.currentTime >= this._endSecondsFor(chapter)) {
-      this._currentIndex = (this._currentIndex + 1) % this._queue.length;
-      this._video.currentTime = this._queue[this._currentIndex].startSeconds;
+    if (currentTime >= this._endSecondsFor(chapter)) {
+      this._seek((this._currentIndex + 1) % this._queue.length);
     }
   }
 
   /** Seeks to a specific chapter in the shuffled queue by index. No-ops for out-of-range. */
   seekToChapter(index: number): void {
     if (index < 0 || index >= this._queue.length) return;
-    this._currentIndex = index;
-    this._video.currentTime = this._queue[index].startSeconds;
+    this._seek(index);
   }
 
   /** Generates a fresh shuffle order and restarts playback from queue index 0. */
   reshuffle(): void {
     this._queue = this._shuffleFn([...this._sorted]);
-    this._currentIndex = 0;
-    this._video.currentTime = this._queue[0].startSeconds;
+    this._seek(0);
   }
 
   /** Removes the timeupdate listener. Call when the video is unloaded. */

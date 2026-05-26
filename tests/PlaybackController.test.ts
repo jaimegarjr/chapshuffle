@@ -55,6 +55,7 @@ describe('PlaybackController — auto-advance', () => {
     const video = buildMockVideo(0);
     const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
     ctrl.seekToChapter(3); // Act 3 (180s), ends at 240s
+    video.tick(180);        // seek settled
     video.tick(241);
     expect(ctrl.currentIndex).toBe(4);
     ctrl.destroy();
@@ -103,6 +104,58 @@ describe('PlaybackController — reshuffle()', () => {
     expect(ctrl.currentIndex).toBe(0);
     expect(ctrl.queue).not.toEqual(firstQueue);
     expect(video.currentTime).toBe(ctrl.queue[0].startSeconds);
+    ctrl.destroy();
+  });
+});
+
+describe('PlaybackController — seek race condition', () => {
+  // Reproduces the "Inside the Deku Tree" bug: clicking a chapter that ends
+  // at T2 while currentTime is already at T2 (stale pre-seek value) must NOT
+  // immediately advance to the next chapter.
+  test('stale pre-seek timeupdate does not advance past the target chapter', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+
+    // Simulate being at the boundary of Act 2 (currentTime = 180, end of Act 2).
+    ctrl.seekToChapter(2); // seek to Act 2 (120s), settle the seek
+    video.tick(120);        // seek settled
+
+    // Now seek to Act 1 (60s, ends at 120s) while currentTime is still 120.
+    // A stale timeupdate with currentTime = 120 must not advance past Act 1.
+    ctrl.seekToChapter(1);  // _seekTarget = 60
+    video.tick(180);        // stale: currentTime is still far from target → suppressed
+    expect(ctrl.currentIndex).toBe(1); // still on Act 1, NOT advanced
+
+    video.tick(60);         // seek settled at target
+    expect(ctrl.currentIndex).toBe(1); // still on Act 1
+
+    video.tick(119);        // playing through Act 1, not at boundary yet
+    expect(ctrl.currentIndex).toBe(1);
+
+    video.tick(120);        // boundary crossed naturally → advance
+    expect(ctrl.currentIndex).toBe(2);
+    ctrl.destroy();
+  });
+
+  test('reshuffle does not immediately skip the first chapter', () => {
+    const video = buildMockVideo(0);
+    let call = 0;
+    // First shuffle: [Intro, Act1, Act2, Act3, Outro]
+    // Second shuffle (reshuffle): reverse = [Outro, Act3, Act2, Act1, Intro]
+    const shuffleFn = (arr: Chapter[]) => (++call === 1 ? [...arr] : [...arr].reverse());
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, shuffleFn);
+
+    // Advance near end of the queue
+    ctrl.seekToChapter(4); // Outro (240s, last chapter → end = Infinity)
+    video.tick(240);        // settled
+
+    // Reshuffle — new queue[0] = Outro (240s), seeks there.
+    // currentTime is still 240 before seek settles, which must not trigger
+    // an advance from Outro (whose end is still Infinity, so safe here —
+    // but the guard also prevents any stale cross-chapter advances in general).
+    ctrl.reshuffle();
+    video.tick(240);        // stale tick at same time — should stay at index 0
+    expect(ctrl.currentIndex).toBe(0);
     ctrl.destroy();
   });
 });

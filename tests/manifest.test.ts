@@ -23,10 +23,10 @@ describe('manifest.json', () => {
   test('content script matches youtube.com pages', () => {
     const cs = manifest.content_scripts[0];
     expect(cs.matches).toContain('https://www.youtube.com/*');
-    expect(cs.js).toContain('dist/content.js');
+    expect(cs.js).toContain('content.js');
   });
 
   test('background service worker is declared', () => {
-    expect(manifest.background.service_worker).toBe('dist/background.js');
+    expect(manifest.background.service_worker).toBe('background.js');
   });
 });

@@ -35,7 +35,7 @@ load:
     @echo "  2. Open: chrome://extensions"
     @echo "  3. Enable 'Developer mode' (top-right toggle)"
     @echo "  4. Click 'Load unpacked'"
-    @echo "  5. Select this directory: $(pwd)/dist  ← point at dist/, not the repo root"
+    @echo "  5. Select the dist/ folder: $(pwd)/dist"
     @echo ""
     @echo "  Tip: run 'just dev' to auto-rebuild on file changes,"
     @echo "       then click the refresh icon on the extension card after each rebuild."

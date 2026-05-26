@@ -1,22 +1,23 @@
-'use strict';
+import { getShuffleEnabled, setShuffleEnabled } from '../src/persistence/PersistenceManager';
 
-const { getShuffleEnabled, setShuffleEnabled } = require('../src/persistence/PersistenceManager');
+interface MockStore {
+  [key: string]: unknown;
+}
 
-// Minimal chrome.storage.sync mock backed by an in-memory store.
-function buildChromeMock(initialStore = {}) {
-  const store = { ...initialStore };
+function buildChromeMock(initialStore: MockStore = {}) {
+  const store: MockStore = { ...initialStore };
   return {
-    runtime: { lastError: null },
+    runtime: { lastError: null as { message: string } | null },
     storage: {
       sync: {
-        get(keys, callback) {
-          const result = {};
+        get(keys: string[], callback: (result: MockStore) => void) {
+          const result: MockStore = {};
           for (const key of keys) {
             if (key in store) result[key] = store[key];
           }
           callback(result);
         },
-        set(items, callback) {
+        set(items: MockStore, callback: () => void) {
           Object.assign(store, items);
           callback();
         },
@@ -27,11 +28,11 @@ function buildChromeMock(initialStore = {}) {
 }
 
 beforeEach(() => {
-  global.chrome = buildChromeMock();
+  (global as unknown as Record<string, unknown>).chrome = buildChromeMock();
 });
 
 afterEach(() => {
-  delete global.chrome;
+  delete (global as unknown as Record<string, unknown>).chrome;
 });
 
 describe('PersistenceManager.getShuffleEnabled()', () => {
@@ -40,12 +41,12 @@ describe('PersistenceManager.getShuffleEnabled()', () => {
   });
 
   test('returns true when previously set to true', async () => {
-    global.chrome = buildChromeMock({ shuffleEnabled: true });
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ shuffleEnabled: true });
     expect(await getShuffleEnabled()).toBe(true);
   });
 
   test('returns false when stored value is false', async () => {
-    global.chrome = buildChromeMock({ shuffleEnabled: false });
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ shuffleEnabled: false });
     expect(await getShuffleEnabled()).toBe(false);
   });
 });
@@ -53,17 +54,14 @@ describe('PersistenceManager.getShuffleEnabled()', () => {
 describe('PersistenceManager.setShuffleEnabled()', () => {
   test('writes true to storage', async () => {
     await setShuffleEnabled(true);
-    expect(global.chrome.storage.sync._store.shuffleEnabled).toBe(true);
+    const chrome = (global as unknown as Record<string, ReturnType<typeof buildChromeMock>>).chrome;
+    expect(chrome.storage.sync._store.shuffleEnabled).toBe(true);
   });
 
   test('writes false to storage', async () => {
     await setShuffleEnabled(false);
-    expect(global.chrome.storage.sync._store.shuffleEnabled).toBe(false);
-  });
-
-  test('coerces truthy value to boolean true', async () => {
-    await setShuffleEnabled(1);
-    expect(global.chrome.storage.sync._store.shuffleEnabled).toBe(true);
+    const chrome = (global as unknown as Record<string, ReturnType<typeof buildChromeMock>>).chrome;
+    expect(chrome.storage.sync._store.shuffleEnabled).toBe(false);
   });
 
   test('round-trips: set then get returns same value', async () => {

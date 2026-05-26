@@ -1,8 +1,7 @@
-'use strict';
+import { shuffle } from '../src/shuffle/ShuffleEngine';
+import type { Chapter } from '../src/types';
 
-const { shuffle } = require('../src/shuffle/ShuffleEngine');
-
-function makeChapters(n) {
+function makeChapters(n: number): Chapter[] {
   return Array.from({ length: n }, (_, i) => ({
     title: `Chapter ${i + 1}`,
     startSeconds: i * 60,
@@ -19,15 +18,12 @@ describe('ShuffleEngine.shuffle()', () => {
   });
 
   test('contains no duplicates', () => {
-    const input = makeChapters(8);
-    const result = shuffle(input);
-    const titles = result.map((c) => c.title);
+    const titles = shuffle(makeChapters(8)).map((c) => c.title);
     expect(new Set(titles).size).toBe(titles.length);
   });
 
   test('output length matches input length', () => {
-    const input = makeChapters(10);
-    expect(shuffle(input)).toHaveLength(10);
+    expect(shuffle(makeChapters(10))).toHaveLength(10);
   });
 
   test('does not mutate the input array', () => {
@@ -45,9 +41,7 @@ describe('ShuffleEngine.shuffle()', () => {
   });
 
   test('returns a single-element array unchanged', () => {
-    const input = makeChapters(1);
-    const result = shuffle(input);
-    expect(result).toEqual(input);
+    expect(shuffle(makeChapters(1))).toEqual(makeChapters(1));
   });
 
   test('returns empty array for empty input', () => {
@@ -55,7 +49,6 @@ describe('ShuffleEngine.shuffle()', () => {
   });
 
   test('output order differs from input for arrays > 2 items (statistical)', () => {
-    // Run 20 shuffles; at least one must differ in order from the input.
     const input = makeChapters(8);
     const inputStr = JSON.stringify(input);
     const allSame = Array.from({ length: 20 }).every(

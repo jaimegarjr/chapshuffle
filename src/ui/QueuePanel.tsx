@@ -8,6 +8,8 @@ interface QueuePanelProps {
   currentIndex: number;
   onSeek: (index: number) => void;
   onReshuffle: () => void;
+  onPrev: () => void;
+  onNext: () => void;
 }
 
 function secondsToTimestamp(totalSeconds: number): string {
@@ -20,11 +22,44 @@ function secondsToTimestamp(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function QueuePanel({ chapters, currentIndex, onSeek, onReshuffle }: QueuePanelProps) {
+function QueuePanel({
+  chapters,
+  currentIndex,
+  onSeek,
+  onReshuffle,
+  onPrev,
+  onNext,
+}: QueuePanelProps) {
+  const atStart = currentIndex === 0;
+  const atEnd = currentIndex === chapters.length - 1;
   return (
     <div id={PANEL_ID}>
       <div id="chapshuffle-queue-header">
         <span id="chapshuffle-queue-title">Shuffle Queue</span>
+        <div id="chapshuffle-nav">
+          <button
+            class="chapshuffle-nav-btn"
+            disabled={atStart}
+            title="Previous chapter"
+            onClick={(e: MouseEvent) => {
+              e.stopPropagation();
+              onPrev();
+            }}
+          >
+            &#8592;
+          </button>
+          <button
+            class="chapshuffle-nav-btn"
+            disabled={atEnd}
+            title="Next chapter"
+            onClick={(e: MouseEvent) => {
+              e.stopPropagation();
+              onNext();
+            }}
+          >
+            &#8594;
+          </button>
+        </div>
         <button
           id="chapshuffle-reshuffle"
           onClick={(e: MouseEvent) => {

@@ -81,6 +81,24 @@ const CSS = `
     opacity: 0.55;
     flex: 1;
   }
+  #chapshuffle-nav {
+    display: flex;
+    gap: 2px;
+  }
+  .chapshuffle-nav-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    padding: 2px 6px;
+    cursor: pointer;
+    opacity: 0.7;
+    border-radius: 4px;
+    transition: opacity 0.1s, background 0.1s;
+  }
+  .chapshuffle-nav-btn:hover:not(:disabled) { opacity: 1; background: rgba(255,255,255,0.1); }
+  .chapshuffle-nav-btn:disabled { opacity: 0.25; cursor: default; }
+
   #chapshuffle-reshuffle {
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.15);
@@ -230,11 +248,20 @@ export class UIInjector {
 
   private _renderPanel(): void {
     if (!this._panelMount || !this._controller) return;
+    const controller = this._controller;
     renderQueuePanel(this._panelMount, {
-      chapters: this._controller.queue,
-      currentIndex: this._controller.currentIndex,
+      chapters: controller.queue,
+      currentIndex: controller.currentIndex,
       onSeek: (i: number) => {
-        this._controller?.seekToChapter(i);
+        controller.seekToChapter(i);
+        this._renderPanel();
+      },
+      onPrev: () => {
+        controller.seekToChapter(controller.currentIndex - 1);
+        this._renderPanel();
+      },
+      onNext: () => {
+        controller.seekToChapter(controller.currentIndex + 1);
         this._renderPanel();
       },
       onReshuffle: () => this._onReshuffle(),

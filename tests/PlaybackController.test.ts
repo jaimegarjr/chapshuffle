@@ -4,8 +4,8 @@ import type { Chapter } from '../src/types';
 const identity = (arr: Chapter[]): Chapter[] => [...arr];
 
 const CHAPTERS: Chapter[] = [
-  { title: 'Intro', startSeconds: 0   },
-  { title: 'Act 1', startSeconds: 60  },
+  { title: 'Intro', startSeconds: 0 },
+  { title: 'Act 1', startSeconds: 60 },
   { title: 'Act 2', startSeconds: 120 },
   { title: 'Act 3', startSeconds: 180 },
   { title: 'Outro', startSeconds: 240 },
@@ -133,6 +133,53 @@ describe('PlaybackController — seek race condition', () => {
     expect(ctrl.currentIndex).toBe(1);
 
     video.tick(120);        // boundary crossed naturally → advance
+    expect(ctrl.currentIndex).toBe(2);
+    ctrl.destroy();
+  });
+
+  test('browser seek overshoots past end of short chapter — does not immediately advance', () => {
+    const SHORT_CHAPTERS: Chapter[] = [
+      { title: 'Intro', startSeconds: 0 },
+      { title: 'Short', startSeconds: 60 }, // endSeconds = 61 (1-second chapter)
+      { title: 'Following', startSeconds: 61 },
+      { title: 'Act 3', startSeconds: 120 },
+      { title: 'Outro', startSeconds: 180 },
+    ];
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, SHORT_CHAPTERS, identity);
+
+    ctrl.seekToChapter(1); // seek to Short (60s), endSeconds = 61
+    // Browser overshoots: lands at 61.5 — within 2s of target (60s), but past end (61s).
+    video.tick(61.5);       // settling tick — must NOT advance
+    expect(ctrl.currentIndex).toBe(1);
+
+    video.tick(60.5);       // normal playback tick inside the chapter
+    expect(ctrl.currentIndex).toBe(1);
+
+    video.tick(61);         // boundary crossed naturally → advance
+    expect(ctrl.currentIndex).toBe(2);
+    ctrl.destroy();
+  });
+
+  test('duplicate startSeconds (same YouTube timestamp) — chapter plays to next distinct boundary', () => {
+    const DUP_CHAPTERS: Chapter[] = [
+      { title: 'Before', startSeconds: 0 },
+      { title: 'Deku Tree', startSeconds: 1014 },
+      { title: 'Duplicate', startSeconds: 1014 }, // same offset as Deku Tree
+      { title: 'After', startSeconds: 2000 },
+      { title: 'Outro', startSeconds: 3000 },
+    ];
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, DUP_CHAPTERS, identity);
+
+    ctrl.seekToChapter(1); // seek to Deku Tree (1014s)
+    video.tick(1014);       // settled — endSeconds must be 2000, NOT 1014
+    expect(ctrl.currentIndex).toBe(1);
+
+    video.tick(1015);       // inside Deku Tree
+    expect(ctrl.currentIndex).toBe(1);
+
+    video.tick(2000);       // boundary crossed naturally → advance
     expect(ctrl.currentIndex).toBe(2);
     ctrl.destroy();
   });

@@ -16,9 +16,9 @@ export class PlaybackController {
   private readonly _bound: () => void;
   // Tracks the target currentTime after any programmatic seek. While set,
   // timeupdate advances are suppressed until the browser's playhead settles
-  // within 2 s of the target — preventing stale pre-seek currentTime values
-  // from falsely triggering an immediate chapter advance.
+  // within 2 s of the target, preventing stale pre-seek values from advancing.
   private _seekTarget: number | null = null;
+  private _suppressCount = 0;
 
   constructor(videoEl: HTMLVideoElement, chapters: Chapter[], shuffleFn?: ShuffleFn) {
     this._shuffleFn = shuffleFn ?? defaultShuffle;
@@ -27,13 +27,14 @@ export class PlaybackController {
     this._queue = this._shuffleFn([...this._sorted]);
     this._bound = this._onTimeUpdate.bind(this);
     videoEl.addEventListener('timeupdate', this._bound);
+
     dbg(
-      'created — sorted:',
-      this._sorted.map((c) => `${c.title}@${c.startSeconds}s`).join(', '),
+      'created - sorted:',
+      this._sorted.map((c) => `${c.title}@${c.startSeconds}s`).join(', ')
     );
     dbg(
       'initial queue:',
-      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', '),
+      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', ')
     );
   }
 
@@ -48,12 +49,17 @@ export class PlaybackController {
   private _endSecondsFor(chapter: Chapter): number {
     const i = this._sorted.findIndex((c) => c.startSeconds === chapter.startSeconds);
     if (i < 0) {
-      dbg(`WARN: chapter "${chapter.title}" (${chapter.startSeconds}s) not found in _sorted — returning Infinity`);
+      dbg(`WARN: chapter "${chapter.title}" (${chapter.startSeconds}s) not found in _sorted`);
       return Infinity;
     }
-    const end =
-      i < this._sorted.length - 1 ? this._sorted[i + 1].startSeconds : Infinity;
-    return end;
+    // YouTube can emit duplicate markers at the same offset. Use the next
+    // strictly later timestamp so duplicates do not immediately auto-skip.
+    for (let j = i + 1; j < this._sorted.length; j++) {
+      if (this._sorted[j].startSeconds > chapter.startSeconds) {
+        return this._sorted[j].startSeconds;
+      }
+    }
+    return Infinity;
   }
 
   private _seek(index: number): void {
@@ -61,44 +67,50 @@ export class PlaybackController {
     const prevTime = this._video.currentTime;
     this._currentIndex = index;
     this._seekTarget = chapter.startSeconds;
+    this._suppressCount = 0;
     this._video.currentTime = this._seekTarget;
     dbg(
-      `seek → [${index}] "${chapter.title}" start=${chapter.startSeconds}s` +
+      `seek -> [${index}] "${chapter.title}" start=${chapter.startSeconds}s` +
         ` end=${this._endSecondsFor(chapter)}s` +
-        ` (was currentTime=${prevTime.toFixed(2)}, _seekTarget=${this._seekTarget})`,
+        ` (was currentTime=${prevTime.toFixed(2)}, _seekTarget=${this._seekTarget})`
     );
   }
 
   private _onTimeUpdate(): void {
     const currentTime = this._video.currentTime;
 
-    // Suppress advances while the browser hasn't yet moved the playhead to
-    // the seek target. A stale currentTime from before the seek would
-    // otherwise satisfy the boundary check and immediately skip the chapter.
     if (this._seekTarget !== null) {
       const delta = Math.abs(currentTime - this._seekTarget);
       if (delta > 2) {
-        dbg(
-          `timeupdate SUPPRESSED — currentTime=${currentTime.toFixed(2)}` +
-            ` _seekTarget=${this._seekTarget} delta=${delta.toFixed(2)}`,
-        );
+        if (this._suppressCount === 0) {
+          dbg(
+            `timeupdate suppressed - currentTime=${currentTime.toFixed(2)}` +
+              ` _seekTarget=${this._seekTarget} delta=${delta.toFixed(2)}`
+          );
+        }
+        this._suppressCount++;
         return;
       }
+
+      const chapter = this._queue[this._currentIndex];
       dbg(
-        `timeupdate: seek settled — currentTime=${currentTime.toFixed(2)}` +
-          ` _seekTarget=${this._seekTarget} delta=${delta.toFixed(2)} → guard cleared`,
+        `timeupdate settled after ${this._suppressCount} suppressed ticks - ` +
+          `currentTime=${currentTime.toFixed(2)} _seekTarget=${this._seekTarget} ` +
+          `chapter="${chapter.title}" end=${this._endSecondsFor(chapter)}`
       );
       this._seekTarget = null;
+      this._suppressCount = 0;
+      return;
     }
 
     const chapter = this._queue[this._currentIndex];
-    const end = this._endSecondsFor(chapter);
-
-    if (currentTime >= end) {
+    const endSeconds = this._endSecondsFor(chapter);
+    if (currentTime >= endSeconds) {
       const nextIndex = (this._currentIndex + 1) % this._queue.length;
       dbg(
-        `AUTO-ADVANCE — currentTime=${currentTime.toFixed(2)} >= end=${end}` +
-          ` "[${this._currentIndex}]${chapter.title}" → "[${nextIndex}]${this._queue[nextIndex].title}"`,
+        `auto-advance - currentTime=${currentTime.toFixed(2)} >= end=${endSeconds}` +
+          ` "[${this._currentIndex}]${chapter.title}" -> ` +
+          `"[${nextIndex}]${this._queue[nextIndex].title}"`
       );
       this._seek(nextIndex);
     }
@@ -107,7 +119,7 @@ export class PlaybackController {
   /** Seeks to a specific chapter in the shuffled queue by index. No-ops for out-of-range. */
   seekToChapter(index: number): void {
     if (index < 0 || index >= this._queue.length) return;
-    dbg(`seekToChapter(${index}) called — queue[${index}]="${this._queue[index].title}"`);
+    dbg(`seekToChapter(${index}) called - queue[${index}]="${this._queue[index].title}"`);
     this._seek(index);
   }
 
@@ -115,8 +127,8 @@ export class PlaybackController {
   reshuffle(): void {
     this._queue = this._shuffleFn([...this._sorted]);
     dbg(
-      'reshuffle — new queue:',
-      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', '),
+      'reshuffle - new queue:',
+      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', ')
     );
     this._seek(0);
   }

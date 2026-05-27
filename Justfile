@@ -1,4 +1,4 @@
-# ChapShuffle – local development commands
+# chapshuffle – local development commands
 # Install: https://github.com/casey/just
 
 # Install dependencies

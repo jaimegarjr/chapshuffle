@@ -1,10 +1,16 @@
 import type { Chapter } from '../types';
 import { parse as parseChapters } from '../parser/ChapterParser';
 import { PlaybackController } from '../playback/PlaybackController';
-import { getShuffleEnabled, getMinChapters } from '../persistence/PersistenceManager';
+import {
+  getShuffleEnabled,
+  getMinChapters,
+  getQueueEndBehavior,
+  type QueueEndBehavior,
+} from '../persistence/PersistenceManager';
 import { renderQueuePanel, unmountQueuePanel } from './QueuePanel';
 
 const STORAGE_KEY = 'shuffleEnabled';
+const QUEUE_END_KEY = 'queueEndBehavior';
 const CONTROLS_SEL = '.ytp-right-controls';
 const VIDEO_SEL = 'video';
 const STYLES_ID = 'chapshuffle-styles';
@@ -56,6 +62,15 @@ const CSS = `
   #chapshuffle-queue,
   #chapshuffle-queue * {
     box-sizing: border-box;
+  }
+
+  #chapshuffle-progress {
+    height: 3px;
+    background: #f00;
+    position: sticky;
+    top: var(--chapshuffle-header-height);
+    z-index: 1;
+    transition: width 0.25s linear;
   }
 
   #chapshuffle-queue-header {
@@ -152,6 +167,7 @@ export class UIInjector {
   private _panelMount: HTMLDivElement | null = null;
   private _autoAdvance = true;
   private _minChapters = 5;
+  private _queueEndBehavior: QueueEndBehavior = 'reshuffle';
   private readonly _boundHighlightUpdate: () => void;
   private readonly _boundStorageChange: (changes: {
     [key: string]: chrome.storage.StorageChange;
@@ -164,9 +180,10 @@ export class UIInjector {
   }
 
   async init(): Promise<void> {
-    [this._autoAdvance, this._minChapters] = await Promise.all([
+    [this._autoAdvance, this._minChapters, this._queueEndBehavior] = await Promise.all([
       getShuffleEnabled(),
       getMinChapters(),
+      getQueueEndBehavior(),
     ]);
     chrome.storage.onChanged.addListener(this._boundStorageChange);
     this._injectStyles();
@@ -175,9 +192,15 @@ export class UIInjector {
   }
 
   private _onStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
-    if (!(STORAGE_KEY in changes)) return;
-    this._autoAdvance = Boolean(changes[STORAGE_KEY].newValue);
-    if (this._controller) this._controller.autoAdvance = this._autoAdvance;
+    if (STORAGE_KEY in changes) {
+      this._autoAdvance = Boolean(changes[STORAGE_KEY].newValue);
+      if (this._controller) this._controller.autoAdvance = this._autoAdvance;
+    }
+    if (QUEUE_END_KEY in changes) {
+      const val = changes[QUEUE_END_KEY].newValue;
+      this._queueEndBehavior = val === 'end-video' ? 'end-video' : 'reshuffle';
+      if (this._controller) this._controller.queueEndBehavior = this._queueEndBehavior;
+    }
   }
 
   private _injectStyles(): void {
@@ -235,7 +258,13 @@ export class UIInjector {
 
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
     if (video) {
-      this._controller = new PlaybackController(video, chapters, undefined, this._autoAdvance);
+      this._controller = new PlaybackController(
+        video,
+        chapters,
+        undefined,
+        this._autoAdvance,
+        this._queueEndBehavior
+      );
       this._video = video;
       this._video.addEventListener('timeupdate', this._boundHighlightUpdate);
     }
@@ -256,6 +285,7 @@ export class UIInjector {
     renderQueuePanel(this._panelMount, {
       chapters: controller.queue,
       currentIndex: controller.currentIndex,
+      progress: controller.chapterProgress,
       onSeek: (i: number) => {
         controller.seekToChapter(i);
         this._renderPanel();
@@ -345,7 +375,13 @@ export class UIInjector {
       const chapters = parseChapters(this._doc);
       const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
       if (chapters && video)
-        this._controller = new PlaybackController(video, chapters, undefined, this._autoAdvance);
+        this._controller = new PlaybackController(
+          video,
+          chapters,
+          undefined,
+          this._autoAdvance,
+          this._queueEndBehavior
+        );
     } else {
       this._controller.reshuffle();
     }

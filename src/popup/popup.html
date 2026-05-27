@@ -189,6 +189,52 @@
         border-right: 1px solid rgba(255, 255, 255, 0.08);
       }
 
+      /* Stacked row variant */
+      .row-col {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      /* Segmented control */
+      .segmented {
+        display: flex;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .seg-btn {
+        flex: 1;
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 12px;
+        font-family: inherit;
+        padding: 6px 0;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+
+      .seg-btn + .seg-btn {
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .seg-btn:hover:not(.seg-active) {
+        background: rgba(255, 255, 255, 0.07);
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .seg-btn.seg-active {
+        background: #cc0000;
+        color: #fff;
+        font-weight: 600;
+      }
+
       .hint {
         padding: 10px 16px 13px;
         font-size: 11px;

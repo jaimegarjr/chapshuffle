@@ -13,6 +13,7 @@ export class PlaybackController {
   private readonly _shuffleFn: ShuffleFn;
   private _queue: Chapter[];
   private _currentIndex = 0;
+  private _autoAdvance: boolean;
   private readonly _bound: () => void;
   // Tracks the target currentTime after any programmatic seek. While set,
   // timeupdate advances are suppressed until the browser's playhead settles
@@ -20,8 +21,14 @@ export class PlaybackController {
   private _seekTarget: number | null = null;
   private _suppressCount = 0;
 
-  constructor(videoEl: HTMLVideoElement, chapters: Chapter[], shuffleFn?: ShuffleFn) {
+  constructor(
+    videoEl: HTMLVideoElement,
+    chapters: Chapter[],
+    shuffleFn?: ShuffleFn,
+    autoAdvance = true
+  ) {
     this._shuffleFn = shuffleFn ?? defaultShuffle;
+    this._autoAdvance = autoAdvance;
     this._video = videoEl;
     this._sorted = [...chapters].sort((a, b) => a.startSeconds - b.startSeconds);
     this._queue = this._shuffleFn([...this._sorted]);
@@ -37,6 +44,11 @@ export class PlaybackController {
 
   get currentIndex(): number {
     return this._currentIndex;
+  }
+
+  set autoAdvance(value: boolean) {
+    this._autoAdvance = value;
+    dbg(`autoAdvance set to ${value}`);
   }
 
   get queue(): Chapter[] {
@@ -99,6 +111,8 @@ export class PlaybackController {
       this._suppressCount = 0;
       return;
     }
+
+    if (!this._autoAdvance) return;
 
     const chapter = this._queue[this._currentIndex];
     const endSeconds = this._endSecondsFor(chapter);

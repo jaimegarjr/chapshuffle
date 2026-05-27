@@ -29,11 +29,11 @@ function buildChapterDOM(chapters: ChapterFixture[]): Element {
 }
 
 const FIVE_CHAPTERS: ChapterFixture[] = [
-  { title: 'Intro',       time: '0:00'  },
-  { title: 'Setup',       time: '1:30'  },
-  { title: 'Main Topic',  time: '5:45'  },
-  { title: 'Deep Dive',   time: '12:10' },
-  { title: 'Outro',       time: '20:00' },
+  { title: 'Intro', time: '0:00' },
+  { title: 'Setup', time: '1:30' },
+  { title: 'Main Topic', time: '5:45' },
+  { title: 'Deep Dive', time: '12:10' },
+  { title: 'Outro', time: '20:00' },
 ];
 
 describe('ChapterParser.parse()', () => {
@@ -41,11 +41,11 @@ describe('ChapterParser.parse()', () => {
     const result = parse(buildChapterDOM(FIVE_CHAPTERS));
     expect(result).not.toBeNull();
     expect(result).toHaveLength(5);
-    expect(result![0]).toEqual({ title: 'Intro',      startSeconds: 0    });
-    expect(result![1]).toEqual({ title: 'Setup',      startSeconds: 90   });
-    expect(result![2]).toEqual({ title: 'Main Topic', startSeconds: 345  });
-    expect(result![3]).toEqual({ title: 'Deep Dive',  startSeconds: 730  });
-    expect(result![4]).toEqual({ title: 'Outro',      startSeconds: 1200 });
+    expect(result![0]).toEqual({ title: 'Intro', startSeconds: 0 });
+    expect(result![1]).toEqual({ title: 'Setup', startSeconds: 90 });
+    expect(result![2]).toEqual({ title: 'Main Topic', startSeconds: 345 });
+    expect(result![3]).toEqual({ title: 'Deep Dive', startSeconds: 730 });
+    expect(result![4]).toEqual({ title: 'Outro', startSeconds: 1200 });
   });
 
   test('returns null when fewer than 5 chapters are present', () => {
@@ -77,9 +77,9 @@ describe('ChapterParser.parse()', () => {
 });
 
 describe('ChapterParser.parseTimestamp()', () => {
-  test('parses MM:SS',   () => expect(parseTimestamp('1:30')).toBe(90));
+  test('parses MM:SS', () => expect(parseTimestamp('1:30')).toBe(90));
   test('parses H:MM:SS', () => expect(parseTimestamp('1:02:03')).toBe(3723));
-  test('parses 0:00',   () => expect(parseTimestamp('0:00')).toBe(0));
+  test('parses 0:00', () => expect(parseTimestamp('0:00')).toBe(0));
 
   test('throws on non-numeric segment', () => {
     expect(() => parseTimestamp('1:xx')).toThrow('Malformed timestamp');

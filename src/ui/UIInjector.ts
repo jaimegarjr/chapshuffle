@@ -246,10 +246,20 @@ export class UIInjector {
       }
 
       const chapters = parseChapters(this._doc);
-      if (chapters && chapters.length >= this._minChapters) {
+      if (this._isLivestream()) {
+        chrome.runtime.sendMessage({ type: 'livestream-detected' });
+      } else if (chapters && chapters.length >= this._minChapters) {
         this._inject(chapters, controls);
       }
     }, POLL_INTERVAL_MS);
+  }
+
+  private _isLivestream(): boolean {
+    const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
+    return (
+      (video !== null && video.duration === Infinity) ||
+      this._doc.querySelector('.ytp-live') !== null
+    );
   }
 
   private _inject(chapters: Chapter[], controlsBar: Element): void {
@@ -389,6 +399,7 @@ export class UIInjector {
   }
 
   private _cleanup(): void {
+    chrome.runtime.sendMessage({ type: 'livestream-left' });
     this._controller?.destroy();
     this._controller = null;
     this._video?.removeEventListener('timeupdate', this._boundHighlightUpdate);

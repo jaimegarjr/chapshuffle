@@ -8,7 +8,10 @@ import { UIInjector } from '../src/ui/UIInjector';
 function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   const store = { ...initialStore };
   return {
-    runtime: { lastError: null as { message: string } | null },
+    runtime: {
+      lastError: null as { message: string } | null,
+      sendMessage: () => {},
+    },
     storage: {
       sync: {
         get: (keys: string[], cb: (r: Record<string, unknown>) => void) => {

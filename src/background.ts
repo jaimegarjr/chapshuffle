@@ -5,6 +5,11 @@ function applyBadge(enabled: boolean): void {
   chrome.action.setBadgeBackgroundColor({ color: enabled ? '#cc0000' : '#888888' });
 }
 
+function applyLiveBadge(): void {
+  chrome.action.setBadgeText({ text: 'LIVE' });
+  chrome.action.setBadgeBackgroundColor({ color: '#ff6600' });
+}
+
 // Apply badge on install and on every service worker startup
 chrome.storage.sync.get([STORAGE_KEY], (result) => {
   applyBadge(result[STORAGE_KEY] === true);
@@ -13,5 +18,15 @@ chrome.storage.sync.get([STORAGE_KEY], (result) => {
 chrome.storage.onChanged.addListener((changes) => {
   if (STORAGE_KEY in changes) {
     applyBadge(Boolean(changes[STORAGE_KEY].newValue));
+  }
+});
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === 'livestream-detected') {
+    applyLiveBadge();
+  } else if (msg?.type === 'livestream-left') {
+    chrome.storage.sync.get([STORAGE_KEY], (result) => {
+      applyBadge(result[STORAGE_KEY] === true);
+    });
   }
 });

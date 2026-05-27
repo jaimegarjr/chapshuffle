@@ -8,7 +8,7 @@ export function getShuffleEnabled(): Promise<boolean> {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.get([STORAGE_KEY], (result) => {
       if (chrome.runtime.lastError) {
-        return reject(new Error(chrome.runtime.lastError.message));
+        return reject(new Error(chrome.runtime.lastError.message ?? 'Unknown chrome storage error'));
       }
       resolve(result[STORAGE_KEY] === true);
     });
@@ -22,7 +22,7 @@ export function setShuffleEnabled(value: boolean): Promise<void> {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.set({ [STORAGE_KEY]: Boolean(value) }, () => {
       if (chrome.runtime.lastError) {
-        return reject(new Error(chrome.runtime.lastError.message));
+        return reject(new Error(chrome.runtime.lastError.message ?? 'Unknown chrome storage error'));
       }
       resolve();
     });

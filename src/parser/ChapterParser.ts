@@ -39,6 +39,7 @@ export function parse(root?: Document | Element): Chapter[] | null {
   const items = Array.from(doc.querySelectorAll(CHAPTER_ITEM));
   if (items.length < MIN_CHAPTERS) return null;
 
+  const seen = new Set<number>();
   const chapters: Chapter[] = [];
   for (const item of items) {
     const timestampEl = item.querySelector(TIMESTAMP_SEL);
@@ -49,6 +50,11 @@ export function parse(root?: Document | Element): Chapter[] | null {
     const startSeconds = parseTimestamp(timestampEl.textContent ?? '');
     const title = titleEl.textContent?.trim() ?? '';
     if (!title) return null;
+
+    // YouTube sometimes renders multiple DOM layers for the same chapter marker.
+    // Keep only the first occurrence of each timestamp.
+    if (seen.has(startSeconds)) continue;
+    seen.add(startSeconds);
 
     chapters.push({ title, startSeconds });
   }

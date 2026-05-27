@@ -56,6 +56,19 @@ describe('ChapterParser.parse()', () => {
     expect(parse(buildChapterDOM([]))).toBeNull();
   });
 
+  test('deduplicates chapters with the same timestamp (YouTube triple-renders DOM layers)', () => {
+    // Build a DOM where every chapter appears three times — matching the real
+    // YouTube behaviour observed on the OoT mix video.
+    const tripled: ChapterFixture[] = [];
+    for (const ch of FIVE_CHAPTERS) {
+      tripled.push(ch, ch, ch);
+    }
+    const result = parse(buildChapterDOM(tripled));
+    expect(result).toHaveLength(5);
+    expect(result![0]).toEqual({ title: 'Intro', startSeconds: 0 });
+    expect(result![4]).toEqual({ title: 'Outro', startSeconds: 1200 });
+  });
+
   test('includes hour-long timestamps', () => {
     const result = parse(buildChapterDOM([...FIVE_CHAPTERS, { title: 'Bonus', time: '1:02:03' }]));
     expect(result).toHaveLength(6);

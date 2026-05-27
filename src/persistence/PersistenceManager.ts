@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'shuffleEnabled';
+const STORAGE_KEY = "shuffleEnabled";
 
 /**
  * Reads the global shuffle toggle from chrome.storage.sync.

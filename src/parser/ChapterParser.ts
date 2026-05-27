@@ -1,8 +1,9 @@
-import type { Chapter } from '../types';
+import type { Chapter } from "../types";
 
-const CHAPTER_ITEM = 'ytd-macro-markers-list-item-renderer';
-const TIMESTAMP_SEL = '#time, .ytd-macro-markers-list-item-renderer span[class*="time"], .time-string';
-const TITLE_SEL = 'h4.yt-simple-endpoint, #video-title, h4[class]';
+const CHAPTER_ITEM = "ytd-macro-markers-list-item-renderer";
+const TIMESTAMP_SEL =
+  '#time, .ytd-macro-markers-list-item-renderer span[class*="time"], .time-string';
+const TITLE_SEL = "h4.yt-simple-endpoint, #video-title, h4[class]";
 
 const MIN_CHAPTERS = 5;
 
@@ -12,13 +13,14 @@ const MIN_CHAPTERS = 5;
  */
 export function parseTimestamp(raw: string): number {
   const str = raw.trim();
-  const parts = str.split(':');
+  const parts = str.split(":");
   if (parts.length < 2 || parts.length > 3) {
     throw new Error(`Malformed timestamp: "${str}"`);
   }
   const nums = parts.map((p) => {
     const n = parseInt(p, 10);
-    if (isNaN(n) || p.trim() === '') throw new Error(`Malformed timestamp: "${str}"`);
+    if (isNaN(n) || p.trim() === "")
+      throw new Error(`Malformed timestamp: "${str}"`);
     return n;
   });
   if (nums.length === 2) return nums[0] * 60 + nums[1];
@@ -33,7 +35,7 @@ export function parseTimestamp(raw: string): number {
  */
 export function parse(root?: Document | Element): Chapter[] | null {
   const doc: Document | Element | null =
-    root ?? (typeof document !== 'undefined' ? document : null);
+    root ?? (typeof document !== "undefined" ? document : null);
   if (!doc) return null;
 
   const items = Array.from(doc.querySelectorAll(CHAPTER_ITEM));
@@ -47,8 +49,8 @@ export function parse(root?: Document | Element): Chapter[] | null {
 
     if (!timestampEl || !titleEl) return null;
 
-    const startSeconds = parseTimestamp(timestampEl.textContent ?? '');
-    const title = titleEl.textContent?.trim() ?? '';
+    const startSeconds = parseTimestamp(timestampEl.textContent ?? "");
+    const title = titleEl.textContent?.trim() ?? "";
     if (!title) return null;
 
     // YouTube sometimes renders multiple DOM layers for the same chapter marker.

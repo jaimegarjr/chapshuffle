@@ -2,13 +2,13 @@ import type { Chapter } from '../types';
 import { parse as parseChapters } from '../parser/ChapterParser';
 import { PlaybackController } from '../playback/PlaybackController';
 import { getShuffleEnabled } from '../persistence/PersistenceManager';
+import { renderQueuePanel, unmountQueuePanel } from './QueuePanel';
 
 const CONTROLS_SEL = '.ytp-right-controls';
 const VIDEO_SEL = 'video';
 const STYLES_ID = 'chapshuffle-styles';
 const PANEL_ID = 'chapshuffle-queue';
 const BTN_ID = 'chapshuffle-btn';
-const ACTIVE_CLASS = 'chapshuffle-active';
 const POLL_INTERVAL_MS = 500;
 const PANEL_WIDTH_PX = 300;
 const PANEL_MARGIN_PX = 24;
@@ -130,11 +130,12 @@ export class UIInjector {
   private _video: HTMLVideoElement | null = null;
   private _observer: MutationObserver | null = null;
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
+  private _panelMount: HTMLDivElement | null = null;
   private readonly _boundHighlightUpdate: () => void;
 
   constructor(doc: Document = document) {
     this._doc = doc;
-    this._boundHighlightUpdate = this._updateHighlight.bind(this);
+    this._boundHighlightUpdate = this._renderPanel.bind(this);
   }
 
   async init(): Promise<void> {
@@ -197,7 +198,6 @@ export class UIInjector {
     // Double-injection guard — our own DOM writes can re-trigger the observer.
     if (this._doc.getElementById(BTN_ID)) return;
 
-    // Create the controller first so the panel displays the shuffled queue order.
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
     if (video) {
       this._controller = new PlaybackController(video, chapters);
@@ -205,14 +205,27 @@ export class UIInjector {
       this._video.addEventListener('timeupdate', this._boundHighlightUpdate);
     }
 
-    // Build queue panel using the shuffled order from the controller.
-    const queueOrder = this._controller ? this._controller.queue : chapters;
-    const panel = this._buildQueuePanel(queueOrder);
-    panel.style.display = 'none'; // hidden until user clicks ⇄
-    this._doc.body.appendChild(panel);
+    this._panelMount = this._doc.createElement('div');
+    this._doc.body.appendChild(this._panelMount);
+    this._renderPanel();
+
+    const panel = this._doc.getElementById(PANEL_ID);
+    if (panel) panel.style.display = 'none'; // hidden until user clicks ⇄
 
     controlsBar.prepend(this._buildToggleButton());
-    this._updateHighlight();
+  }
+
+  private _renderPanel(): void {
+    if (!this._panelMount || !this._controller) return;
+    renderQueuePanel(this._panelMount, {
+      chapters: this._controller.queue,
+      currentIndex: this._controller.currentIndex,
+      onSeek: (i: number) => {
+        this._controller?.seekToChapter(i);
+        this._renderPanel();
+      },
+      onReshuffle: () => this._onReshuffle(),
+    });
   }
 
   // ⇄ button: opens/closes the queue panel.
@@ -241,7 +254,7 @@ export class UIInjector {
     btn?.setAttribute('aria-expanded', String(opening));
     if (btn) btn.title = opening ? 'chapshuffle: close queue' : 'chapshuffle: open queue';
 
-    if (opening) this._updateHighlight();
+    if (opening) this._renderPanel();
   }
 
   private _positionPanelOverVideo(panel: HTMLElement): void {
@@ -283,80 +296,6 @@ export class UIInjector {
     panel.style.maxHeight = `${Math.round(maxPanelHeight)}px`;
   }
 
-  private _buildQueuePanel(chapters: Chapter[]): HTMLDivElement {
-    const panel = this._doc.createElement('div');
-    panel.id = PANEL_ID;
-
-    const header = this._doc.createElement('div');
-    header.id = 'chapshuffle-queue-header';
-
-    const title = this._doc.createElement('span');
-    title.id = 'chapshuffle-queue-title';
-    title.textContent = 'Shuffle Queue';
-
-    const reshuffleBtn = this._doc.createElement('button');
-    reshuffleBtn.id = 'chapshuffle-reshuffle';
-    reshuffleBtn.textContent = '⇄ Reshuffle';
-    reshuffleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this._onReshuffle();
-    });
-
-    header.appendChild(title);
-    header.appendChild(reshuffleBtn);
-    panel.appendChild(header);
-
-    chapters.forEach((chapter, i) => panel.appendChild(this._buildQueueItem(chapter, i)));
-    return panel;
-  }
-
-  private _buildQueueItem(chapter: Chapter, i: number): HTMLDivElement {
-    const item = this._doc.createElement('div');
-    item.dataset['index'] = String(i);
-    item.className = 'chapshuffle-item';
-
-    const titleEl = this._doc.createElement('span');
-    titleEl.className = 'chapshuffle-title';
-    titleEl.textContent = chapter.title;
-
-    const timeEl = this._doc.createElement('span');
-    timeEl.className = 'chapshuffle-time';
-    timeEl.textContent = secondsToTimestamp(chapter.startSeconds);
-
-    item.appendChild(titleEl);
-    item.appendChild(timeEl);
-    item.addEventListener('click', (e) => {
-      e.stopPropagation();
-      console.log(
-        `[chapshuffle] click queue[${i}] "${chapter.title}" start=${chapter.startSeconds}s`
-      );
-      // Index i maps directly into the controller's shuffled queue because
-      // the panel was built from controller.queue in the same order.
-      this._controller?.seekToChapter(i);
-      this._updateHighlight();
-    });
-    return item;
-  }
-
-  // Replaces the chapter rows in the panel with the controller's current queue.
-  private _rebuildQueueItems(): void {
-    const panel = this._doc.getElementById(PANEL_ID);
-    if (!panel || !this._controller) return;
-    panel.querySelectorAll('.chapshuffle-item').forEach((el) => el.remove());
-    this._controller.queue.forEach((chapter, i) =>
-      panel.appendChild(this._buildQueueItem(chapter, i))
-    );
-  }
-
-  private _updateHighlight(): void {
-    if (!this._controller) return;
-    const panel = this._doc.getElementById(PANEL_ID);
-    if (!panel) return;
-    panel.querySelectorAll('.chapshuffle-item').forEach((item, i) => {
-      item.classList.toggle(ACTIVE_CLASS, i === this._controller!.currentIndex);
-    });
-  }
-
   private _onReshuffle(): void {
     if (!this._controller) {
       const chapters = parseChapters(this._doc);
@@ -365,9 +304,7 @@ export class UIInjector {
     } else {
       this._controller.reshuffle();
     }
-    // Rebuild panel rows to reflect the new shuffle order, then re-highlight.
-    this._rebuildQueueItems();
-    this._updateHighlight();
+    this._renderPanel();
   }
 
   private _cleanup(): void {
@@ -381,9 +318,13 @@ export class UIInjector {
       this._pollTimer = null;
     }
 
-    for (const id of [BTN_ID, PANEL_ID]) {
-      this._doc.getElementById(id)?.remove();
+    if (this._panelMount) {
+      unmountQueuePanel(this._panelMount);
+      this._panelMount.remove();
+      this._panelMount = null;
     }
+
+    this._doc.getElementById(BTN_ID)?.remove();
   }
 
   destroy(): void {
@@ -391,14 +332,4 @@ export class UIInjector {
     this._observer = null;
     this._cleanup();
   }
-}
-
-function secondsToTimestamp(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-  return `${m}:${String(s).padStart(2, '0')}`;
 }

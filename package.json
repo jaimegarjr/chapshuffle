@@ -30,6 +30,14 @@
     },
     "testMatch": [
       "**/tests/**/*.test.ts"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^preact/jsx-runtime$": "<rootDir>/node_modules/preact/jsx-runtime/dist/jsxRuntime.js",
+      "^preact/hooks$": "<rootDir>/node_modules/preact/hooks/dist/hooks.js",
+      "^preact$": "<rootDir>/node_modules/preact/dist/preact.js"
+    }
+  },
+  "dependencies": {
+    "preact": "^10.29.2"
   }
 }

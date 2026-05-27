@@ -22,6 +22,10 @@ function buildChromeMock(initialStore: Record<string, unknown> = {}) {
         },
         _store: store,
       },
+      onChanged: {
+        addListener: () => {},
+        removeListener: () => {},
+      },
     },
   };
 }
@@ -238,6 +242,7 @@ describe('UIInjector — queue content', () => {
 
   test('updates the active row when playback auto-advances', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ shuffleEnabled: true });
     addPlayerControls(document);
     addChapterItems(document, 5);
     const video = addVideoElement(document);

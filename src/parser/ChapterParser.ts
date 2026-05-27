@@ -1,7 +1,8 @@
 import type { Chapter } from '../types';
 
 const CHAPTER_ITEM = 'ytd-macro-markers-list-item-renderer';
-const TIMESTAMP_SEL = '#time, .ytd-macro-markers-list-item-renderer span[class*="time"], .time-string';
+const TIMESTAMP_SEL =
+  '#time, .ytd-macro-markers-list-item-renderer span[class*="time"], .time-string';
 const TITLE_SEL = 'h4.yt-simple-endpoint, #video-title, h4[class]';
 
 const MIN_CHAPTERS = 5;

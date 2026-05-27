@@ -1,7 +1,7 @@
 import type { Chapter } from '../types';
 import { parse as parseChapters } from '../parser/ChapterParser';
 import { PlaybackController } from '../playback/PlaybackController';
-import { getShuffleEnabled } from '../persistence/PersistenceManager';
+import { getShuffleEnabled, getMinChapters } from '../persistence/PersistenceManager';
 import { renderQueuePanel, unmountQueuePanel } from './QueuePanel';
 
 const STORAGE_KEY = 'shuffleEnabled';
@@ -151,6 +151,7 @@ export class UIInjector {
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
   private _panelMount: HTMLDivElement | null = null;
   private _autoAdvance = true;
+  private _minChapters = 5;
   private readonly _boundHighlightUpdate: () => void;
   private readonly _boundStorageChange: (changes: {
     [key: string]: chrome.storage.StorageChange;
@@ -163,7 +164,10 @@ export class UIInjector {
   }
 
   async init(): Promise<void> {
-    this._autoAdvance = await getShuffleEnabled();
+    [this._autoAdvance, this._minChapters] = await Promise.all([
+      getShuffleEnabled(),
+      getMinChapters(),
+    ]);
     chrome.storage.onChanged.addListener(this._boundStorageChange);
     this._injectStyles();
     this._startObserver();
@@ -219,7 +223,7 @@ export class UIInjector {
       }
 
       const chapters = parseChapters(this._doc);
-      if (chapters && chapters.length >= 5) {
+      if (chapters && chapters.length >= this._minChapters) {
         this._inject(chapters, controls);
       }
     }, POLL_INTERVAL_MS);

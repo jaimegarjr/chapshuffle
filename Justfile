@@ -33,8 +33,38 @@ format:
 format-check:
     yarn format:check
 
-# One-shot: type-check + test + build
-ci: typecheck format-check test build
+# One-shot: type-check + test + production build (debug logs stripped, minified)
+ci: typecheck format-check test
+    yarn build:prod
+
+# Package dist/ into a zip ready for Chrome Web Store upload
+zip: ci
+    #!/usr/bin/env bash
+    VERSION=$(node -p "require('./manifest.json').version")
+    rm -f chapshuffle-*.zip
+    cd dist && zip -r ../chapshuffle-v$VERSION.zip .
+    echo "  → chapshuffle-v$VERSION.zip ready for Chrome Web Store upload"
+
+# Bump manifest.json version, commit, and push a tag — triggers the release workflow
+# Usage: just release 1.2.3
+release version:
+    #!/usr/bin/env bash
+    set -e
+    if [ -z "{{version}}" ]; then echo "Usage: just release X.Y.Z"; exit 1; fi
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+      echo "error: working tree is dirty — commit or stash changes first"; exit 1
+    fi
+    node -e "
+      const fs = require('fs');
+      const m = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+      m.version = '{{version}}';
+      fs.writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
+    "
+    git add manifest.json
+    git commit -m "chore: release v{{version}}"
+    git tag "v{{version}}"
+    git push origin HEAD "v{{version}}"
+    echo "  → tagged v{{version}} and pushed — release workflow is running"
 
 # Tell user how to load the extension in Chrome
 load:

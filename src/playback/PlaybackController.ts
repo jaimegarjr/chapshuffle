@@ -28,10 +28,7 @@ export class PlaybackController {
     this._bound = this._onTimeUpdate.bind(this);
     videoEl.addEventListener('timeupdate', this._bound);
 
-    dbg(
-      'created - sorted:',
-      this._sorted.map((c) => `${c.title}@${c.startSeconds}s`).join(', ')
-    );
+    dbg('created - sorted:', this._sorted.map((c) => `${c.title}@${c.startSeconds}s`).join(', '));
     dbg(
       'initial queue:',
       this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', ')

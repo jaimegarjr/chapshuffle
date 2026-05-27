@@ -220,7 +220,7 @@ export class UIInjector {
     const btn = this._doc.createElement('button');
     btn.id = BTN_ID;
     btn.textContent = '⇄';
-    btn.title = 'ChapShuffle: open queue';
+    btn.title = 'chapshuffle: open queue';
     btn.setAttribute('aria-expanded', 'false');
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -239,7 +239,7 @@ export class UIInjector {
     if (opening) this._positionPanelOverVideo(panel);
     panel.style.display = opening ? 'block' : 'none';
     btn?.setAttribute('aria-expanded', String(opening));
-    if (btn) btn.title = opening ? 'ChapShuffle: close queue' : 'ChapShuffle: open queue';
+    if (btn) btn.title = opening ? 'chapshuffle: close queue' : 'chapshuffle: open queue';
 
     if (opening) this._updateHighlight();
   }
@@ -327,7 +327,9 @@ export class UIInjector {
     item.appendChild(timeEl);
     item.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log(`[ChapShuffle] click queue[${i}] "${chapter.title}" start=${chapter.startSeconds}s`);
+      console.log(
+        `[chapshuffle] click queue[${i}] "${chapter.title}" start=${chapter.startSeconds}s`
+      );
       // Index i maps directly into the controller's shuffled queue because
       // the panel was built from controller.queue in the same order.
       this._controller?.seekToChapter(i);

@@ -1,3 +1,3 @@
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('[ChapShuffle] extension installed');
+  console.log('[chapshuffle] extension installed');
 });

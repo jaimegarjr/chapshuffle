@@ -3,6 +3,7 @@
 const esbuild = require('esbuild');
 const fs = require('fs');
 const watch = process.argv.includes('--watch');
+const prod = process.argv.includes('--prod');
 
 const config = {
   entryPoints: {
@@ -17,6 +18,8 @@ const config = {
   sourcemap: watch ? 'inline' : false,
   jsx: 'automatic',
   jsxImportSource: 'preact',
+  define: { __DEV__: String(!prod) },
+  minify: prod,
 };
 
 function copyStatic() {

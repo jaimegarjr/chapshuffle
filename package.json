@@ -7,6 +7,7 @@
   "scripts": {
     "test": "jest",
     "build": "node build.js",
+    "build:prod": "node build.js --prod",
     "watch": "node build.js --watch",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,html,css}\"",
@@ -25,6 +26,9 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "globals": {
+      "__DEV__": true
+    },
     "transform": {
       "^.+\\.tsx?$": "ts-jest"
     },

@@ -4,8 +4,9 @@ import type { QueueEndBehavior } from '../persistence/PersistenceManager';
 
 type ShuffleFn = (chapters: Chapter[]) => Chapter[];
 
+declare const __DEV__: boolean;
 function dbg(...args: unknown[]): void {
-  console.debug('[ChapShuffle]', ...args);
+  if (__DEV__) console.debug('[ChapShuffle]', ...args);
 }
 
 export class PlaybackController {

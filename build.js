@@ -8,13 +8,15 @@ const config = {
   entryPoints: {
     content: 'src/content.ts',
     background: 'src/background.ts',
-    popup: 'src/popup/popup.ts',
+    popup: 'src/popup/popup.tsx',
   },
   outdir: 'dist',
   bundle: true,
   platform: 'browser',
   target: 'chrome100',
   sourcemap: watch ? 'inline' : false,
+  jsx: 'automatic',
+  jsxImportSource: 'preact',
 };
 
 function copyStatic() {

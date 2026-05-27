@@ -21,7 +21,12 @@ export class PlaybackController {
   private _seekTarget: number | null = null;
   private _suppressCount = 0;
 
-  constructor(videoEl: HTMLVideoElement, chapters: Chapter[], shuffleFn?: ShuffleFn, autoAdvance = true) {
+  constructor(
+    videoEl: HTMLVideoElement,
+    chapters: Chapter[],
+    shuffleFn?: ShuffleFn,
+    autoAdvance = true
+  ) {
     this._shuffleFn = shuffleFn ?? defaultShuffle;
     this._autoAdvance = autoAdvance;
     this._video = videoEl;

@@ -134,7 +134,9 @@ export class UIInjector {
   private _panelMount: HTMLDivElement | null = null;
   private _autoAdvance = true;
   private readonly _boundHighlightUpdate: () => void;
-  private readonly _boundStorageChange: (changes: { [key: string]: chrome.storage.StorageChange }) => void;
+  private readonly _boundStorageChange: (changes: {
+    [key: string]: chrome.storage.StorageChange;
+  }) => void;
 
   constructor(doc: Document = document) {
     this._doc = doc;
@@ -311,7 +313,8 @@ export class UIInjector {
     if (!this._controller) {
       const chapters = parseChapters(this._doc);
       const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      if (chapters && video) this._controller = new PlaybackController(video, chapters, undefined, this._autoAdvance);
+      if (chapters && video)
+        this._controller = new PlaybackController(video, chapters, undefined, this._autoAdvance);
     } else {
       this._controller.reshuffle();
     }

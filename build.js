@@ -21,8 +21,12 @@ const config = {
 
 function copyStatic() {
   fs.mkdirSync('dist', { recursive: true });
+  fs.mkdirSync('dist/icons', { recursive: true });
   fs.copyFileSync('manifest.json', 'dist/manifest.json');
   fs.copyFileSync('src/popup/popup.html', 'dist/popup.html');
+  for (const size of [16, 48, 128]) {
+    fs.copyFileSync(`icons/icon${size}.png`, `dist/icons/icon${size}.png`);
+  }
 }
 
 async function main() {

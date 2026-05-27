@@ -25,8 +25,16 @@ build:
 dev:
     yarn watch
 
+# Format source files with Prettier
+format:
+    yarn format
+
+# Check formatting without writing changes (CI-safe)
+format-check:
+    yarn format:check
+
 # One-shot: type-check + test + build
-ci: typecheck test build
+ci: typecheck format-check test build
 
 # Tell user how to load the extension in Chrome
 load:

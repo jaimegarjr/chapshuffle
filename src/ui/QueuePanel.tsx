@@ -6,6 +6,7 @@ const PANEL_ID = 'chapshuffle-queue';
 interface QueuePanelProps {
   chapters: Chapter[];
   currentIndex: number;
+  progress: number;
   onSeek: (index: number) => void;
   onReshuffle: () => void;
   onPrev: () => void;
@@ -25,6 +26,7 @@ function secondsToTimestamp(totalSeconds: number): string {
 function QueuePanel({
   chapters,
   currentIndex,
+  progress,
   onSeek,
   onReshuffle,
   onPrev,
@@ -70,6 +72,7 @@ function QueuePanel({
           ⇄ Reshuffle
         </button>
       </div>
+      <div id="chapshuffle-progress" style={{ width: `${Math.round(progress * 100)}%` }} />
       {chapters.map((chapter, i) => (
         <div
           key={chapter.startSeconds}

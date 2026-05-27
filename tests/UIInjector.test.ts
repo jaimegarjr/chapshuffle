@@ -261,6 +261,44 @@ describe('UIInjector — queue content', () => {
   });
 });
 
+// ── chapter progress bar ───────────────────────────────────────────────────
+
+describe('UIInjector — chapter progress bar', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  test('progress bar element exists in the rendered panel', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    expect(document.getElementById('chapshuffle-progress')).not.toBeNull();
+    injector.destroy();
+  });
+
+  test('progress bar width updates when video time changes', async () => {
+    // Math.random=0 makes Fisher-Yates put the "1:00" chapter (60s–120s) at index 0
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    const video = addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    // queue[0] = chapter starting at 60s, ending at 120s; at 90s => 50%
+    video.currentTime = 90;
+    video.dispatchEvent(new Event('timeupdate'));
+
+    const bar = document.getElementById('chapshuffle-progress') as HTMLElement;
+    expect(bar.style.width).toBe('50%');
+    randomSpy.mockRestore();
+    injector.destroy();
+  });
+});
+
 // ── cleanup ────────────────────────────────────────────────────────────────
 
 describe('UIInjector — cleanup', () => {

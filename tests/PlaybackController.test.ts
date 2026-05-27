@@ -13,15 +13,17 @@ const CHAPTERS: Chapter[] = [
 
 interface MockVideo {
   currentTime: number;
+  duration: number;
   addEventListener: (event: string, fn: () => void) => void;
   removeEventListener: (event: string, fn: () => void) => void;
   tick: (time: number) => void;
 }
 
-function buildMockVideo(initialTime = 0): MockVideo {
+function buildMockVideo(initialTime = 0, duration = 300): MockVideo {
   const listeners: Record<string, Array<() => void>> = { timeupdate: [] };
   const video: MockVideo = {
     currentTime: initialTime,
+    duration,
     addEventListener(event, fn) {
       listeners[event] = listeners[event] ?? [];
       listeners[event].push(fn);
@@ -207,6 +209,86 @@ describe('PlaybackController — seek race condition', () => {
   });
 });
 
+describe('PlaybackController — queue end behavior', () => {
+  test('reshuffle: reaching end of queue generates new queue and restarts from index 0', () => {
+    const FIVE: Chapter[] = [
+      { title: 'A', startSeconds: 0 },
+      { title: 'B', startSeconds: 60 },
+      { title: 'C', startSeconds: 120 },
+      { title: 'D', startSeconds: 180 },
+      { title: 'E', startSeconds: 240 },
+    ];
+    let call = 0;
+    const sf = (arr: Chapter[]) => (++call === 1 ? [...arr].reverse() : [...arr]);
+    const v = buildMockVideo(0);
+    const ctrl = new PlaybackController(v as unknown as HTMLVideoElement, FIVE, sf, true, 'reshuffle');
+    ctrl.seekToChapter(4); // A (0s), endSeconds = 60
+    v.tick(0);  // settle
+    v.tick(60); // A ends → last chapter → reshuffle → seek to index 0 (A, 0s)
+    expect(ctrl.currentIndex).toBe(0);
+    expect(v.currentTime).toBe(0);
+    ctrl.destroy();
+  });
+
+  test('end-video: reaching end of queue seeks to video.duration', () => {
+    // Queue reversed so last item (A, 0s) ends at 60s (finite boundary)
+    const FIVE: Chapter[] = [
+      { title: 'A', startSeconds: 0 },
+      { title: 'B', startSeconds: 60 },
+      { title: 'C', startSeconds: 120 },
+      { title: 'D', startSeconds: 180 },
+      { title: 'E', startSeconds: 240 },
+    ];
+    const reverse = (arr: Chapter[]) => [...arr].reverse();
+    const v = buildMockVideo(0, 300);
+    const ctrl = new PlaybackController(v as unknown as HTMLVideoElement, FIVE, reverse, true, 'end-video');
+    // Queue: [E,D,C,B,A]. Last = A (index 4), ends at 60.
+    ctrl.seekToChapter(4);
+    v.tick(0);  // settle
+    v.tick(60); // A ends → last chapter → seek to video.duration
+    expect(v.currentTime).toBe(300);
+    ctrl.destroy();
+  });
+
+  test('end-video: does not seek when video.duration is Infinity (livestream guard)', () => {
+    const FIVE: Chapter[] = [
+      { title: 'A', startSeconds: 0 },
+      { title: 'B', startSeconds: 60 },
+      { title: 'C', startSeconds: 120 },
+      { title: 'D', startSeconds: 180 },
+      { title: 'E', startSeconds: 240 },
+    ];
+    const reverse = (arr: Chapter[]) => [...arr].reverse();
+    const v = buildMockVideo(0, Infinity); // livestream
+    const ctrl = new PlaybackController(v as unknown as HTMLVideoElement, FIVE, reverse, true, 'end-video');
+    ctrl.seekToChapter(4); // A (0s), ends at 60
+    v.tick(0);
+    v.tick(60); // end of last chapter — should NOT seek
+    expect(v.currentTime).toBe(60); // unchanged
+    ctrl.destroy();
+  });
+
+  test('queueEndBehavior setter takes effect before queue end fires', () => {
+    const FIVE: Chapter[] = [
+      { title: 'A', startSeconds: 0 },
+      { title: 'B', startSeconds: 60 },
+      { title: 'C', startSeconds: 120 },
+      { title: 'D', startSeconds: 180 },
+      { title: 'E', startSeconds: 240 },
+    ];
+    const reverse = (arr: Chapter[]) => [...arr].reverse();
+    const v = buildMockVideo(0, 300);
+    // Start with reshuffle, switch to end-video before queue ends
+    const ctrl = new PlaybackController(v as unknown as HTMLVideoElement, FIVE, reverse, true, 'reshuffle');
+    ctrl.seekToChapter(4); // A (0s), ends at 60
+    v.tick(0);
+    ctrl.queueEndBehavior = 'end-video'; // switch mid-playback
+    v.tick(60); // end of last chapter → should end-video, not reshuffle
+    expect(v.currentTime).toBe(300);
+    ctrl.destroy();
+  });
+});
+
 describe('PlaybackController — isolation', () => {
   test('two controllers for different videos do not share state', () => {
     const v1 = buildMockVideo(0);
@@ -217,5 +299,60 @@ describe('PlaybackController — isolation', () => {
     expect(ctrl2.currentIndex).toBe(0);
     ctrl1.destroy();
     ctrl2.destroy();
+  });
+});
+
+// ── chapterProgress ────────────────────────────────────────────────────────
+
+describe('PlaybackController — chapterProgress', () => {
+  test('returns 0 when at the chapter start', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    // identity keeps original order; currentIndex=0 is Intro starting at 0s
+    expect(ctrl.chapterProgress).toBe(0);
+    ctrl.destroy();
+  });
+
+  test('returns correct ratio mid-chapter', () => {
+    const video = buildMockVideo(30);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    // Intro: 0s–60s; at 30s => 0.5
+    expect(ctrl.chapterProgress).toBeCloseTo(0.5);
+    ctrl.destroy();
+  });
+
+  test('clamps to 1 when at or past chapter end', () => {
+    const video = buildMockVideo(65);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    // Intro: 0s–60s; at 65s => clamped to 1
+    expect(ctrl.chapterProgress).toBe(1);
+    ctrl.destroy();
+  });
+
+  test('reflects updated currentTime after video ticks', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity, false);
+    video.tick(30);
+    // Intro: 0s–60s; at 30s => 0.5
+    expect(ctrl.chapterProgress).toBeCloseTo(0.5);
+    ctrl.destroy();
+  });
+
+  test('uses video.duration as end for the last chapter', () => {
+    // duration=300; Outro starts at 240s; at 270s => (270-240)/(300-240) = 0.5
+    const video = buildMockVideo(0, 300);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.seekToChapter(4); // Outro is last in identity order, seeked to 240s
+    video.currentTime = 270; // simulate playback mid-chapter
+    expect(ctrl.chapterProgress).toBeCloseTo(0.5);
+    ctrl.destroy();
+  });
+
+  test('returns 0 for last chapter when video.duration is not finite (livestream)', () => {
+    const video = buildMockVideo(270, Infinity);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.seekToChapter(4);
+    expect(ctrl.chapterProgress).toBe(0);
+    ctrl.destroy();
   });
 });

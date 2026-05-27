@@ -1,5 +1,6 @@
 import type { Chapter } from '../types';
 import { shuffle as defaultShuffle } from '../shuffle/ShuffleEngine';
+import type { QueueEndBehavior } from '../persistence/PersistenceManager';
 
 type ShuffleFn = (chapters: Chapter[]) => Chapter[];
 
@@ -14,6 +15,7 @@ export class PlaybackController {
   private _queue: Chapter[];
   private _currentIndex = 0;
   private _autoAdvance: boolean;
+  private _queueEndBehavior: QueueEndBehavior;
   private readonly _bound: () => void;
   // Tracks the target currentTime after any programmatic seek. While set,
   // timeupdate advances are suppressed until the browser's playhead settles
@@ -25,10 +27,12 @@ export class PlaybackController {
     videoEl: HTMLVideoElement,
     chapters: Chapter[],
     shuffleFn?: ShuffleFn,
-    autoAdvance = true
+    autoAdvance = true,
+    queueEndBehavior: QueueEndBehavior = 'reshuffle'
   ) {
     this._shuffleFn = shuffleFn ?? defaultShuffle;
     this._autoAdvance = autoAdvance;
+    this._queueEndBehavior = queueEndBehavior;
     this._video = videoEl;
     this._sorted = [...chapters].sort((a, b) => a.startSeconds - b.startSeconds);
     this._queue = this._shuffleFn([...this._sorted]);
@@ -51,8 +55,23 @@ export class PlaybackController {
     dbg(`autoAdvance set to ${value}`);
   }
 
+  set queueEndBehavior(value: QueueEndBehavior) {
+    this._queueEndBehavior = value;
+    dbg(`queueEndBehavior set to ${value}`);
+  }
+
   get queue(): Chapter[] {
     return [...this._queue];
+  }
+
+  get chapterProgress(): number {
+    const chapter = this._queue[this._currentIndex];
+    const startSeconds = chapter.startSeconds;
+    let endSeconds = this._endSecondsFor(chapter);
+    if (!isFinite(endSeconds)) endSeconds = this._video.duration;
+    if (!isFinite(endSeconds) || endSeconds <= startSeconds) return 0;
+    const ratio = (this._video.currentTime - startSeconds) / (endSeconds - startSeconds);
+    return Math.min(1, Math.max(0, ratio));
   }
 
   private _endSecondsFor(chapter: Chapter): number {
@@ -117,13 +136,24 @@ export class PlaybackController {
     const chapter = this._queue[this._currentIndex];
     const endSeconds = this._endSecondsFor(chapter);
     if (currentTime >= endSeconds) {
-      const nextIndex = (this._currentIndex + 1) % this._queue.length;
-      dbg(
-        `auto-advance - currentTime=${currentTime.toFixed(2)} >= end=${endSeconds}` +
-          ` "[${this._currentIndex}]${chapter.title}" -> ` +
-          `"[${nextIndex}]${this._queue[nextIndex].title}"`
-      );
-      this._seek(nextIndex);
+      const isLastChapter = this._currentIndex === this._queue.length - 1;
+      if (isLastChapter) {
+        dbg(`queue end - behavior=${this._queueEndBehavior}`);
+        if (this._queueEndBehavior === 'end-video') {
+          const duration = this._video.duration;
+          if (isFinite(duration)) this._video.currentTime = duration;
+        } else {
+          this.reshuffle();
+        }
+      } else {
+        const nextIndex = this._currentIndex + 1;
+        dbg(
+          `auto-advance - currentTime=${currentTime.toFixed(2)} >= end=${endSeconds}` +
+            ` "[${this._currentIndex}]${chapter.title}" -> ` +
+            `"[${nextIndex}]${this._queue[nextIndex].title}"`
+        );
+        this._seek(nextIndex);
+      }
     }
   }
 

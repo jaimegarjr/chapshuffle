@@ -4,6 +4,7 @@ import { PlaybackController } from '../playback/PlaybackController';
 import { getShuffleEnabled } from '../persistence/PersistenceManager';
 import { renderQueuePanel, unmountQueuePanel } from './QueuePanel';
 
+const STORAGE_KEY = 'shuffleEnabled';
 const CONTROLS_SEL = '.ytp-right-controls';
 const VIDEO_SEL = 'video';
 const STYLES_ID = 'chapshuffle-styles';
@@ -131,18 +132,28 @@ export class UIInjector {
   private _observer: MutationObserver | null = null;
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
   private _panelMount: HTMLDivElement | null = null;
+  private _autoAdvance = true;
   private readonly _boundHighlightUpdate: () => void;
+  private readonly _boundStorageChange: (changes: { [key: string]: chrome.storage.StorageChange }) => void;
 
   constructor(doc: Document = document) {
     this._doc = doc;
     this._boundHighlightUpdate = this._renderPanel.bind(this);
+    this._boundStorageChange = this._onStorageChange.bind(this);
   }
 
   async init(): Promise<void> {
-    await getShuffleEnabled(); // warm storage; value reserved for future per-video opt-out
+    this._autoAdvance = await getShuffleEnabled();
+    chrome.storage.onChanged.addListener(this._boundStorageChange);
     this._injectStyles();
     this._startObserver();
     this._startPoll();
+  }
+
+  private _onStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
+    if (!(STORAGE_KEY in changes)) return;
+    this._autoAdvance = Boolean(changes[STORAGE_KEY].newValue);
+    if (this._controller) this._controller.autoAdvance = this._autoAdvance;
   }
 
   private _injectStyles(): void {
@@ -200,7 +211,7 @@ export class UIInjector {
 
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
     if (video) {
-      this._controller = new PlaybackController(video, chapters);
+      this._controller = new PlaybackController(video, chapters, undefined, this._autoAdvance);
       this._video = video;
       this._video.addEventListener('timeupdate', this._boundHighlightUpdate);
     }
@@ -300,7 +311,7 @@ export class UIInjector {
     if (!this._controller) {
       const chapters = parseChapters(this._doc);
       const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      if (chapters && video) this._controller = new PlaybackController(video, chapters);
+      if (chapters && video) this._controller = new PlaybackController(video, chapters, undefined, this._autoAdvance);
     } else {
       this._controller.reshuffle();
     }
@@ -330,6 +341,7 @@ export class UIInjector {
   destroy(): void {
     this._observer?.disconnect();
     this._observer = null;
+    chrome.storage.onChanged.removeListener(this._boundStorageChange);
     this._cleanup();
   }
 }

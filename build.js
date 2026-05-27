@@ -28,11 +28,11 @@ async function main() {
   const ctx = await esbuild.context(config);
   if (watch) {
     await ctx.watch();
-    console.log('[chapshuffule] watching — reload the extension card in chrome://extensions after saving');
+    console.log('[chapshuffle] watching — reload the extension card in chrome://extensions after saving');
   } else {
     await ctx.rebuild();
     await ctx.dispose();
-    console.log('[chapshuffule] build complete → dist/');
+    console.log('[chapshuffle] build complete → dist/');
   }
 }
 

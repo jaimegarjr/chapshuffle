@@ -81,7 +81,7 @@ describe('UIInjector — injection guard', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    expect(document.getElementById('chapshuffule-btn')).toBeNull();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
     injector.destroy();
   });
 
@@ -92,7 +92,7 @@ describe('UIInjector — injection guard', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    expect(document.getElementById('chapshuffule-btn')).not.toBeNull();
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
     injector.destroy();
   });
 
@@ -105,7 +105,7 @@ describe('UIInjector — injection guard', () => {
     await flushAll();
     // Simulate a second poll tick firing before clearInterval takes effect.
     await flushAll();
-    const rows = document.querySelectorAll('.chapshuffule-item');
+    const rows = document.querySelectorAll('.chapshuffle-item');
     expect(rows.length).toBe(5);
     injector.destroy();
   });
@@ -124,7 +124,7 @@ describe('UIInjector — queue panel visibility', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('none');
+    expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('none');
     injector.destroy();
   });
 
@@ -135,8 +135,37 @@ describe('UIInjector — queue panel visibility', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    (document.getElementById('chapshuffule-btn') as HTMLButtonElement).click();
-    expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('block');
+    (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+    expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('block');
+    injector.destroy();
+  });
+
+  test('opening the panel positions it over the video', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    const video = addVideoElement(document);
+    video.getBoundingClientRect = jest.fn(() => ({
+      x: 100,
+      y: 50,
+      top: 50,
+      right: 900,
+      bottom: 550,
+      left: 100,
+      width: 800,
+      height: 500,
+      toJSON: () => ({}),
+    } as DOMRect));
+
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
+    expect(panel.style.top).toBe('88px');
+    expect(panel.style.left).toBe('576px');
+    expect(panel.style.bottom).toBe('auto');
+    expect(panel.style.right).toBe('auto');
     injector.destroy();
   });
 
@@ -147,10 +176,10 @@ describe('UIInjector — queue panel visibility', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    const btn = document.getElementById('chapshuffule-btn') as HTMLButtonElement;
+    const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
     btn.click();
     btn.click();
-    expect(document.getElementById('chapshuffule-queue')!.style.display).toBe('none');
+    expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('none');
     expect(btn.getAttribute('aria-expanded')).toBe('false');
     injector.destroy();
   });
@@ -169,7 +198,7 @@ describe('UIInjector — queue content', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    expect(document.querySelectorAll('.chapshuffule-item').length).toBe(5);
+    expect(document.querySelectorAll('.chapshuffle-item').length).toBe(5);
     injector.destroy();
   });
 
@@ -180,7 +209,7 @@ describe('UIInjector — queue content', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    expect(document.getElementById('chapshuffule-reshuffle')).not.toBeNull();
+    expect(document.getElementById('chapshuffle-reshuffle')).not.toBeNull();
     injector.destroy();
   });
 
@@ -191,7 +220,7 @@ describe('UIInjector — queue content', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    expect(document.getElementById('chapshuffule-toggle')).toBeNull();
+    expect(document.getElementById('chapshuffle-toggle')).toBeNull();
     injector.destroy();
   });
 
@@ -202,8 +231,27 @@ describe('UIInjector — queue content', () => {
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
-    (document.getElementById('chapshuffule-reshuffle') as HTMLButtonElement).click();
-    expect(document.querySelectorAll('.chapshuffule-item').length).toBe(5);
+    (document.getElementById('chapshuffle-reshuffle') as HTMLButtonElement).click();
+    expect(document.querySelectorAll('.chapshuffle-item').length).toBe(5);
+    injector.destroy();
+  });
+
+  test('updates the active row when playback auto-advances', async () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    const video = addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+
+    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('0');
+    video.currentTime = 120;
+    video.dispatchEvent(new Event('timeupdate'));
+
+    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('1');
+    randomSpy.mockRestore();
     injector.destroy();
   });
 });
@@ -222,7 +270,7 @@ describe('UIInjector — cleanup', () => {
     await injector.init();
     await flushAll();
     injector.destroy();
-    expect(document.getElementById('chapshuffule-btn')).toBeNull();
-    expect(document.getElementById('chapshuffule-queue')).toBeNull();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+    expect(document.getElementById('chapshuffle-queue')).toBeNull();
   });
 });

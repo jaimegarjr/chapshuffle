@@ -38,6 +38,26 @@ export class PlaybackController {
     this._sorted = [...chapters].sort((a, b) => a.startSeconds - b.startSeconds);
     this._queue = this._shuffleFn([...this._sorted]);
     this._bound = this._onTimeUpdate.bind(this);
+    // If the video is already mid-way (e.g. YouTube resumed a previous watch),
+    // prime _seekTarget so the first timeupdate settles without triggering
+    // auto-advance. Also set _currentIndex to the queue position of whatever
+    // chapter contains currentTime — otherwise auto-advance fires immediately
+    // after settling because _currentIndex=0 may point to a chapter that
+    // already ended at the resume position.
+    if (videoEl.currentTime > 0) {
+      this._seekTarget = videoEl.currentTime;
+      let resumeChapter = this._sorted[0];
+      for (const c of this._sorted) {
+        if (c.startSeconds <= videoEl.currentTime) resumeChapter = c;
+        else break;
+      }
+      const queueIdx = this._queue.findIndex((c) => c.startSeconds === resumeChapter.startSeconds);
+      if (queueIdx >= 0) this._currentIndex = queueIdx;
+      dbg(
+        `mid-video resume — currentTime=${videoEl.currentTime.toFixed(2)}, ` +
+          `chapter="${resumeChapter.title}", _currentIndex=${this._currentIndex}`
+      );
+    }
     videoEl.addEventListener('timeupdate', this._bound);
 
     dbg('created - sorted:', this._sorted.map((c) => `${c.title}@${c.startSeconds}s`).join(', '));

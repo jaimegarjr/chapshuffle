@@ -322,9 +322,10 @@ describe('PlaybackController — chapterProgress', () => {
   });
 
   test('clamps to 1 when at or past chapter end', () => {
-    const video = buildMockVideo(65);
-    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
-    // Intro: 0s–60s; at 65s => clamped to 1
+    const video = buildMockVideo(0);
+    // autoAdvance=false so _currentIndex stays at 0 (Intro) even when time passes its boundary.
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity, false);
+    video.tick(65); // Intro ends at 60s; ratio = 65/60 > 1, clamped to 1
     expect(ctrl.chapterProgress).toBe(1);
     ctrl.destroy();
   });

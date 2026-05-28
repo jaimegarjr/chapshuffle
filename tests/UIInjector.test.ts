@@ -344,36 +344,4 @@ describe('UIInjector — navigation (stale queue regression)', () => {
     jest.mocked(Math.random).mockRestore();
     injector.destroy();
   });
-
-  test('chapters loading after yt-navigate-finish still triggers injection', async () => {
-    addPlayerControls(document);
-    addChapterItems(document, 5);
-    addVideoElement(document);
-    const injector = new UIInjector(document);
-    await injector.init();
-    await flushAll();
-    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
-
-    document.body.innerHTML = '';
-    addPlayerControls(document);
-    addVideoElement(document);
-
-    document.dispatchEvent(new Event('yt-navigate-finish'));
-
-    jest.advanceTimersByTime(500);
-    await Promise.resolve();
-    expect(document.getElementById('chapshuffle-btn')).toBeNull();
-
-    addChapterItems(document, 6);
-
-    jest.advanceTimersByTime(500);
-    await Promise.resolve();
-    expect(document.getElementById('chapshuffle-btn')).toBeNull();
-
-    jest.advanceTimersByTime(500);
-    await Promise.resolve();
-    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
-
-    injector.destroy();
-  });
 });

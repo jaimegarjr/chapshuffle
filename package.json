@@ -35,6 +35,12 @@
     "testMatch": [
       "**/tests/**/*.test.ts"
     ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/",
+      "/compiled/",
+      "/.claude/"
+    ],
     "moduleNameMapper": {
       "^preact/jsx-runtime$": "<rootDir>/node_modules/preact/jsx-runtime/dist/jsxRuntime.js",
       "^preact/hooks$": "<rootDir>/node_modules/preact/hooks/dist/hooks.js",

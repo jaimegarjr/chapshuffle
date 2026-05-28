@@ -8,20 +8,14 @@ import {
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
 import { renderQueuePanel, unmountQueuePanel } from './QueuePanel';
-
-declare const __DEV__: boolean;
-function dbg(...args: unknown[]): void {
-  if (__DEV__) console.debug('[CS-nav]', ...args);
-}
+import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
 
 const STORAGE_KEY = 'shuffleEnabled';
 const QUEUE_END_KEY = 'queueEndBehavior';
-const CONTROLS_SEL = '.ytp-right-controls';
 const VIDEO_SEL = 'video';
 const STYLES_ID = 'chapshuffle-styles';
 const PANEL_ID = 'chapshuffle-queue';
 const BTN_ID = 'chapshuffle-btn';
-const POLL_INTERVAL_MS = 500;
 const PANEL_WIDTH_PX = 300;
 const PANEL_MARGIN_PX = 24;
 const PLAYER_CONTROLS_CLEARANCE_PX = 72;
@@ -165,15 +159,14 @@ const CSS = `
 
 export class UIInjector {
   private readonly _doc: Document;
+  private _watcher: YouTubeChapterWatcher | null = null;
   private _controller: PlaybackController | null = null;
   private _video: HTMLVideoElement | null = null;
-  private _pollTimer: ReturnType<typeof setInterval> | null = null;
   private _panelMount: HTMLDivElement | null = null;
   private _autoAdvance = true;
   private _minChapters = 5;
   private _queueEndBehavior: QueueEndBehavior = 'reshuffle';
   private readonly _boundHighlightUpdate: () => void;
-  private readonly _boundNavigateFinish: () => void;
   private readonly _boundStorageChange: (changes: {
     [key: string]: chrome.storage.StorageChange;
   }) => void;
@@ -181,7 +174,6 @@ export class UIInjector {
   constructor(doc: Document = document) {
     this._doc = doc;
     this._boundHighlightUpdate = this._renderPanel.bind(this);
-    this._boundNavigateFinish = this._onNavigate.bind(this);
     this._boundStorageChange = this._onStorageChange.bind(this);
   }
 
@@ -193,8 +185,14 @@ export class UIInjector {
     ]);
     chrome.storage.onChanged.addListener(this._boundStorageChange);
     this._injectStyles();
-    this._startObserver();
-    this._startPoll();
+    this._watcher = new YouTubeChapterWatcher(this._doc, {
+      minChapters: this._minChapters,
+      isInjected: () => this._doc.getElementById(BTN_ID) !== null,
+      onNavigate: () => this._resetInjectedState(),
+      onChaptersReady: (chapters, controlsBar) => this._inject(chapters, controlsBar),
+      onLivestream: () => chrome.runtime.sendMessage({ type: 'livestream-detected' }),
+    });
+    this._watcher.start();
   }
 
   private _onStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
@@ -207,6 +205,11 @@ export class UIInjector {
       this._queueEndBehavior = val === 'end-video' ? 'end-video' : 'reshuffle';
       if (this._controller) this._controller.queueEndBehavior = this._queueEndBehavior;
     }
+    if ('minChapters' in changes) {
+      const val = changes.minChapters.newValue;
+      this._minChapters = typeof val === 'number' && val >= 2 ? val : this._minChapters;
+      if (this._watcher) this._watcher.minChapters = this._minChapters;
+    }
   }
 
   private _injectStyles(): void {
@@ -217,100 +220,10 @@ export class UIInjector {
     (this._doc.head ?? this._doc.documentElement).appendChild(style);
   }
 
-  private _startObserver(): void {
-    this._doc.addEventListener('yt-navigate-finish', this._boundNavigateFinish);
-  }
-
-  private _onNavigate(): void {
-    dbg('yt-navigate-finish fired — url=' + (this._doc.location?.href ?? '?'));
-    if (this._panelMount) {
-      dbg('unmounting stale panel mount');
-      unmountQueuePanel(this._panelMount);
-      this._panelMount.remove();
-      this._panelMount = null;
-    } else {
-      dbg('no panel mount to unmount');
-    }
-    const hadBtn = !!this._doc.getElementById(BTN_ID);
-    this._doc.getElementById(BTN_ID)?.remove();
-    dbg(`btn was present=${hadBtn}, controller present=${!!this._controller}`);
-    this._cleanup();
-    this._startPoll();
-  }
-
-  private _startPoll(): void {
-    let lastSig = '';
-    dbg('startPoll — waiting for stable chapter fingerprint');
-    this._pollTimer = setInterval(() => {
-      if (this._doc.getElementById(BTN_ID)) {
-        dbg('poll: BTN already present, stopping');
-        if (this._pollTimer !== null) {
-          clearInterval(this._pollTimer);
-          this._pollTimer = null;
-        }
-        return;
-      }
-
-      const controls = this._doc.querySelector(CONTROLS_SEL);
-      if (!controls) {
-        lastSig = '';
-        return;
-      }
-
-      if (this._isLivestream()) {
-        if (this._pollTimer !== null) {
-          clearInterval(this._pollTimer);
-          this._pollTimer = null;
-        }
-        chrome.runtime.sendMessage({ type: 'livestream-detected' });
-        return;
-      }
-
-      const allLists = this._doc.querySelectorAll('ytd-macro-markers-list-renderer');
-      const chapterRoot =
-        allLists.length > 0 ? (allLists[allLists.length - 1] as Element) : this._doc;
-      const chapters = parseChapters(chapterRoot);
-
-      const sig =
-        chapters !== null ? chapters.map((c) => `${c.startSeconds}:${c.title}`).join('|') : '\0';
-
-      if (sig !== lastSig) {
-        dbg(`poll: chapters=${chapters?.length ?? 'null'} (changed), waiting for stable state`);
-        lastSig = sig;
-        return;
-      }
-
-      if (this._pollTimer !== null) {
-        clearInterval(this._pollTimer);
-        this._pollTimer = null;
-      }
-      if (chapters === null) {
-        dbg('poll: stable null — video has too few or no chapters, stopping');
-        return;
-      }
-      dbg(`poll: stable — ${chapters.length} chapters confirmed across two ticks`);
-      if (chapters.length >= this._minChapters) {
-        this._inject(chapters, controls);
-      }
-    }, POLL_INTERVAL_MS);
-  }
-
-  private _isLivestream(): boolean {
-    const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-    return (
-      (video !== null && video.duration === Infinity) ||
-      this._doc.querySelector('.ytp-live') !== null
-    );
-  }
-
   private _inject(chapters: Chapter[], controlsBar: Element): void {
     if (this._doc.getElementById(BTN_ID)) return;
 
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-    dbg(
-      `inject — chapters=[${chapters.map((c) => `"${c.title}"@${c.startSeconds}s`).join(', ')}] ` +
-        `video.currentTime=${video?.currentTime ?? 'n/a'} video.duration=${video?.duration ?? 'n/a'}`
-    );
     if (video) {
       this._controller = new PlaybackController(
         video,
@@ -442,7 +355,7 @@ export class UIInjector {
     this._renderPanel();
   }
 
-  private _cleanup(): void {
+  private _resetInjectedState(): void {
     try {
       chrome.runtime.sendMessage({ type: 'livestream-left' });
     } catch {}
@@ -450,11 +363,6 @@ export class UIInjector {
     this._controller = null;
     this._video?.removeEventListener('timeupdate', this._boundHighlightUpdate);
     this._video = null;
-
-    if (this._pollTimer !== null) {
-      clearInterval(this._pollTimer);
-      this._pollTimer = null;
-    }
 
     if (this._panelMount) {
       unmountQueuePanel(this._panelMount);
@@ -466,8 +374,9 @@ export class UIInjector {
   }
 
   destroy(): void {
-    this._doc.removeEventListener('yt-navigate-finish', this._boundNavigateFinish);
+    this._watcher?.destroy();
+    this._watcher = null;
     chrome.storage.onChanged.removeListener(this._boundStorageChange);
-    this._cleanup();
+    this._resetInjectedState();
   }
 }

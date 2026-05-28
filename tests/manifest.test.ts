@@ -1,9 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const manifest = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8')
-);
+const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
 
 describe('manifest.json', () => {
   test('targets Manifest V3', () => {

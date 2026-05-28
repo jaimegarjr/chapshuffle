@@ -1,6 +1,3 @@
-/**
- * @jest-environment jsdom
- */
 import { parse, parseTimestamp } from '../src/parser/ChapterParser';
 
 interface ChapterFixture {
@@ -57,8 +54,6 @@ describe('ChapterParser.parse()', () => {
   });
 
   test('deduplicates chapters with the same timestamp (YouTube triple-renders DOM layers)', () => {
-    // Build a DOM where every chapter appears three times — matching the real
-    // YouTube behaviour observed on the OoT mix video.
     const tripled: ChapterFixture[] = [];
     for (const ch of FIVE_CHAPTERS) {
       tripled.push(ch, ch, ch);

@@ -3,7 +3,7 @@ import type { Chapter } from '../types';
 
 const PANEL_ID = 'chapshuffle-queue';
 
-interface QueuePanelProps {
+export interface QueuePanelProps {
   chapters: Chapter[];
   currentIndex: number;
   progress: number;

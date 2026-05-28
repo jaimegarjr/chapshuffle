@@ -7,10 +7,6 @@ const TITLE_SEL = 'h4.yt-simple-endpoint, #video-title, h4[class]';
 
 const MIN_CHAPTERS = 5;
 
-/**
- * Parses "M:SS", "MM:SS", or "H:MM:SS" timestamp strings into total seconds.
- * Throws on malformed input rather than returning silently wrong values.
- */
 export function parseTimestamp(raw: string): number {
   const str = raw.trim();
   const parts = str.split(':');
@@ -26,12 +22,6 @@ export function parseTimestamp(raw: string): number {
   return nums[0] * 3600 + nums[1] * 60 + nums[2];
 }
 
-/**
- * Parses chapter data from the YouTube DOM.
- *
- * @param root - DOM root to query against (defaults to global document).
- * @returns Structured chapter array, or null when fewer than 5 chapters are found.
- */
 export function parse(root?: Document | Element): Chapter[] | null {
   const doc: Document | Element | null =
     root ?? (typeof document !== 'undefined' ? document : null);
@@ -52,8 +42,6 @@ export function parse(root?: Document | Element): Chapter[] | null {
     const title = titleEl.textContent?.trim() ?? '';
     if (!title) return null;
 
-    // YouTube sometimes renders multiple DOM layers for the same chapter marker.
-    // Keep only the first occurrence of each timestamp.
     if (seen.has(startSeconds)) continue;
     seen.add(startSeconds);
 

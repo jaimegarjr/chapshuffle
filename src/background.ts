@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'shuffleEnabled';
+import { getShuffleEnabled, settingsChangeFromChrome } from './persistence/PersistenceManager';
 
 function applyBadge(enabled: boolean): void {
   chrome.action.setBadgeText({ text: enabled ? 'ON' : '' });
@@ -10,14 +10,13 @@ function applyLiveBadge(): void {
   chrome.action.setBadgeBackgroundColor({ color: '#ff6600' });
 }
 
-// Apply badge on install and on every service worker startup
-chrome.storage.sync.get([STORAGE_KEY], (result) => {
-  applyBadge(result[STORAGE_KEY] === true);
-});
+getShuffleEnabled().then(applyBadge);
 
 chrome.storage.onChanged.addListener((changes) => {
-  if (STORAGE_KEY in changes) {
-    applyBadge(Boolean(changes[STORAGE_KEY].newValue));
+  const settingsChange = settingsChangeFromChrome(changes);
+  const shuffleEnabled = settingsChange.shuffleEnabled;
+  if (shuffleEnabled !== undefined) {
+    applyBadge(shuffleEnabled);
   }
 });
 
@@ -25,8 +24,6 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === 'livestream-detected') {
     applyLiveBadge();
   } else if (msg?.type === 'livestream-left') {
-    chrome.storage.sync.get([STORAGE_KEY], (result) => {
-      applyBadge(result[STORAGE_KEY] === true);
-    });
+    getShuffleEnabled().then(applyBadge);
   }
 });

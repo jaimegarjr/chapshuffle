@@ -94,6 +94,28 @@ describe('PlaybackController — reshuffle()', () => {
   });
 });
 
+describe('PlaybackController — queue reordering', () => {
+  test('reorders the queue without seeking the video', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.seekToChapter(2);
+    video.tick(120);
+
+    expect(ctrl.reorderQueue(4, 1)).toBe(true);
+
+    expect(ctrl.queue.map((chapter) => chapter.title)).toEqual([
+      'Intro',
+      'Outro',
+      'Act 1',
+      'Act 2',
+      'Act 3',
+    ]);
+    expect(ctrl.currentIndex).toBe(3);
+    expect(video.currentTime).toBe(120);
+    ctrl.destroy();
+  });
+});
+
 describe('PlaybackController — seek race condition', () => {
   test('stale pre-seek timeupdate does not advance past the target chapter', () => {
     const video = buildMockVideo(0);

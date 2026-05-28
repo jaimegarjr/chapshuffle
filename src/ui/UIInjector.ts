@@ -110,6 +110,10 @@ export class UIInjector {
         this._renderPanel();
       },
       onReshuffle: () => this._onReshuffle(),
+      onReorder: (fromIndex: number, toIndex: number) => {
+        controller.reorderQueue(fromIndex, toIndex);
+        this._renderPanel();
+      },
     });
   }
 

@@ -11,6 +11,7 @@ export interface QueuePanelProps {
   onReshuffle: () => void;
   onPrev: () => void;
   onNext: () => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
 }
 
 function secondsToTimestamp(totalSeconds: number): string {
@@ -31,6 +32,7 @@ function QueuePanel({
   onReshuffle,
   onPrev,
   onNext,
+  onReorder,
 }: QueuePanelProps) {
   const atStart = currentIndex === 0;
   const atEnd = currentIndex === chapters.length - 1;
@@ -77,10 +79,28 @@ function QueuePanel({
         <div
           key={chapter.startSeconds}
           data-index={String(i)}
+          draggable
           class={`chapshuffle-item${i === currentIndex ? ' chapshuffle-active' : ''}`}
           onClick={(e: MouseEvent) => {
             e.stopPropagation();
             onSeek(i);
+          }}
+          onDragStart={(e: DragEvent) => {
+            e.stopPropagation();
+            e.dataTransfer?.setData('text/plain', String(i));
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+          }}
+          onDragOver={(e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          }}
+          onDrop={(e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const fromIndex = Number(e.dataTransfer?.getData('text/plain'));
+            if (!Number.isInteger(fromIndex)) return;
+            onReorder(fromIndex, i);
           }}
         >
           <span class="chapshuffle-title">{chapter.title}</span>

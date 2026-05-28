@@ -150,6 +150,19 @@ export class PlaybackController {
     this._seek(0);
   }
 
+  reorderQueue(fromIndex: number, toIndex: number): boolean {
+    const didReorder = this._timeline.moveQueueItem(fromIndex, toIndex);
+    if (didReorder) {
+      debug.log(
+        'reorder queue:',
+        this._timeline.queue.map((queueChapter, index) => {
+          return `[${index}]${queueChapter.title}@${queueChapter.startSeconds}s`;
+        })
+      );
+    }
+    return didReorder;
+  }
+
   destroy(): void {
     this._video.removeEventListener('timeupdate', this._bound);
   }

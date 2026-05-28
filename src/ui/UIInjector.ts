@@ -334,7 +334,7 @@ export class UIInjector {
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
     dbg(
       `inject — chapters=[${chapters.map((c) => `"${c.title}"@${c.startSeconds}s`).join(', ')}] ` +
-      `video.currentTime=${video?.currentTime ?? 'n/a'} video.duration=${video?.duration ?? 'n/a'}`
+        `video.currentTime=${video?.currentTime ?? 'n/a'} video.duration=${video?.duration ?? 'n/a'}`
     );
     if (video) {
       this._controller = new PlaybackController(

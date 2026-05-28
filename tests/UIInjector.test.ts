@@ -217,6 +217,7 @@ describe('UIInjector — queue content', () => {
     await injector.init();
     await flushAll();
     expect(document.querySelectorAll('.chapshuffle-item').length).toBe(5);
+    expect(document.querySelectorAll('.chapshuffle-drag-handle').length).toBe(5);
     injector.destroy();
   });
 

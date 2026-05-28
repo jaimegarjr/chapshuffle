@@ -103,6 +103,9 @@ function QueuePanel({
             onReorder(fromIndex, i);
           }}
         >
+          <span class="chapshuffle-drag-handle" title="Drag to reorder" aria-hidden="true">
+            ⋮⋮
+          </span>
           <span class="chapshuffle-title">{chapter.title}</span>
           <span class="chapshuffle-time">{secondsToTimestamp(chapter.startSeconds)}</span>
         </div>

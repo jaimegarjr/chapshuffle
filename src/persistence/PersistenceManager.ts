@@ -5,10 +5,6 @@ export const DEFAULT_MIN_CHAPTERS = 5;
 
 export type QueueEndBehavior = 'reshuffle' | 'end-video';
 
-/**
- * Reads the global shuffle toggle from chrome.storage.sync.
- * Resolves to false when the key is not yet stored.
- */
 export function getShuffleEnabled(): Promise<boolean> {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.get([STORAGE_KEY], (result) => {
@@ -76,9 +72,6 @@ export function setQueueEndBehavior(value: QueueEndBehavior): Promise<void> {
   });
 }
 
-/**
- * Persists the global shuffle toggle to chrome.storage.sync.
- */
 export function setShuffleEnabled(value: boolean): Promise<void> {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.set({ [STORAGE_KEY]: Boolean(value) }, () => {

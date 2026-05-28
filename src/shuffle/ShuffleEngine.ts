@@ -1,9 +1,5 @@
 import type { Chapter } from '../types';
 
-/**
- * Returns a new array containing the same elements as `chapters` in a
- * randomized order (Fisher-Yates). The input array is never mutated.
- */
 export function shuffle(chapters: Chapter[]): Chapter[] {
   if (chapters.length === 0) return [];
   const copy = chapters.slice();

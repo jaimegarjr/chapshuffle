@@ -10,7 +10,6 @@ function applyLiveBadge(): void {
   chrome.action.setBadgeBackgroundColor({ color: '#ff6600' });
 }
 
-// Apply badge on install and on every service worker startup
 chrome.storage.sync.get([STORAGE_KEY], (result) => {
   applyBadge(result[STORAGE_KEY] === true);
 });

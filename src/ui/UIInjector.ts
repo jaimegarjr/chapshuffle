@@ -218,15 +218,11 @@ export class UIInjector {
   }
 
   private _startObserver(): void {
-    // yt-navigate-finish fires on every YouTube SPA navigation. Note: it can fire
-    // multiple times per navigation (partially-settled DOM, then fully-settled).
-    // _startPoll handles this by waiting for a stable chapter fingerprint.
     this._doc.addEventListener('yt-navigate-finish', this._boundNavigateFinish);
   }
 
   private _onNavigate(): void {
     dbg('yt-navigate-finish fired — url=' + (this._doc.location?.href ?? '?'));
-    // Unmount the panel immediately so stale chapters are never visible.
     if (this._panelMount) {
       dbg('unmounting stale panel mount');
       unmountQueuePanel(this._panelMount);
@@ -243,14 +239,9 @@ export class UIInjector {
   }
 
   private _startPoll(): void {
-    // yt-navigate-finish can fire before YouTube finishes swapping chapter DOM
-    // nodes, leaving a mix of old + new chapters. Rather than waiting a fixed
-    // delay, we fingerprint the chapter list each tick and only inject once the
-    // same fingerprint appears on two consecutive ticks — i.e., the DOM has settled.
     let lastSig = '';
     dbg('startPoll — waiting for stable chapter fingerprint');
     this._pollTimer = setInterval(() => {
-      // Guard: stop if already injected.
       if (this._doc.getElementById(BTN_ID)) {
         dbg('poll: BTN already present, stopping');
         if (this._pollTimer !== null) {
@@ -262,11 +253,10 @@ export class UIInjector {
 
       const controls = this._doc.querySelector(CONTROLS_SEL);
       if (!controls) {
-        lastSig = ''; // reset when controls disappear (e.g. fullscreen transitions)
+        lastSig = '';
         return;
       }
 
-      // Livestreams have no chapters — detect and report immediately.
       if (this._isLivestream()) {
         if (this._pollTimer !== null) {
           clearInterval(this._pollTimer);
@@ -276,34 +266,20 @@ export class UIInjector {
         return;
       }
 
-      // Scope to the last ytd-macro-markers-list-renderer so we don't pick up
-      // stale chapter items YouTube leaves in the DOM from a previous video.
-      // YouTube appends each video's chapter panel, so the last container belongs
-      // to the current video. Fall back to the full document if no container exists
-      // (e.g. in tests or if YouTube changes the structure).
       const allLists = this._doc.querySelectorAll('ytd-macro-markers-list-renderer');
       const chapterRoot =
         allLists.length > 0 ? (allLists[allLists.length - 1] as Element) : this._doc;
       const chapters = parseChapters(chapterRoot);
 
-      // Use '\0' as a sentinel for "no chapters in DOM yet". This lets us apply
-      // the same two-tick stability check for the null case: if chapters are
-      // absent for two consecutive ticks the video has no (enough) chapters; if
-      // they appear between ticks the fingerprint changes and we keep polling.
-      // Stopping on the first null tick was the bug: yt-navigate-finish fires
-      // before YouTube finishes injecting chapter DOM nodes, so the very first
-      // tick often sees null even when the new video has chapters.
       const sig =
         chapters !== null ? chapters.map((c) => `${c.startSeconds}:${c.title}`).join('|') : '\0';
 
       if (sig !== lastSig) {
-        // Chapter list is still changing (or just appeared) — wait to settle.
         dbg(`poll: chapters=${chapters?.length ?? 'null'} (changed), waiting for stable state`);
         lastSig = sig;
         return;
       }
 
-      // Same fingerprint on two consecutive ticks — DOM has settled.
       if (this._pollTimer !== null) {
         clearInterval(this._pollTimer);
         this._pollTimer = null;
@@ -328,7 +304,6 @@ export class UIInjector {
   }
 
   private _inject(chapters: Chapter[], controlsBar: Element): void {
-    // Double-injection guard — our own DOM writes can re-trigger the observer.
     if (this._doc.getElementById(BTN_ID)) return;
 
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
@@ -353,7 +328,7 @@ export class UIInjector {
     this._renderPanel();
 
     const panel = this._doc.getElementById(PANEL_ID);
-    if (panel) panel.style.display = 'none'; // hidden until user clicks ⇄
+    if (panel) panel.style.display = 'none';
 
     controlsBar.prepend(this._buildToggleButton());
   }
@@ -381,7 +356,6 @@ export class UIInjector {
     });
   }
 
-  // ⇄ button: opens/closes the queue panel.
   private _buildToggleButton(): HTMLButtonElement {
     const btn = this._doc.createElement('button');
     btn.id = BTN_ID;
@@ -471,9 +445,7 @@ export class UIInjector {
   private _cleanup(): void {
     try {
       chrome.runtime.sendMessage({ type: 'livestream-left' });
-    } catch (_) {
-      /* context invalidated */
-    }
+    } catch {}
     this._controller?.destroy();
     this._controller = null;
     this._video?.removeEventListener('timeupdate', this._boundHighlightUpdate);

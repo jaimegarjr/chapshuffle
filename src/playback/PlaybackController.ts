@@ -18,9 +18,6 @@ export class PlaybackController {
   private _autoAdvance: boolean;
   private _queueEndBehavior: QueueEndBehavior;
   private readonly _bound: () => void;
-  // Tracks the target currentTime after any programmatic seek. While set,
-  // timeupdate advances are suppressed until the browser's playhead settles
-  // within 2 s of the target, preventing stale pre-seek values from advancing.
   private _seekTarget: number | null = null;
   private _suppressCount = 0;
 
@@ -38,12 +35,6 @@ export class PlaybackController {
     this._sorted = [...chapters].sort((a, b) => a.startSeconds - b.startSeconds);
     this._queue = this._shuffleFn([...this._sorted]);
     this._bound = this._onTimeUpdate.bind(this);
-    // If the video is already mid-way (e.g. YouTube resumed a previous watch),
-    // prime _seekTarget so the first timeupdate settles without triggering
-    // auto-advance. Also set _currentIndex to the queue position of whatever
-    // chapter contains currentTime — otherwise auto-advance fires immediately
-    // after settling because _currentIndex=0 may point to a chapter that
-    // already ended at the resume position.
     if (videoEl.currentTime > 0) {
       this._seekTarget = videoEl.currentTime;
       let resumeChapter = this._sorted[0];
@@ -101,8 +92,6 @@ export class PlaybackController {
       dbg(`WARN: chapter "${chapter.title}" (${chapter.startSeconds}s) not found in _sorted`);
       return Infinity;
     }
-    // YouTube can emit duplicate markers at the same offset. Use the next
-    // strictly later timestamp so duplicates do not immediately auto-skip.
     for (let j = i + 1; j < this._sorted.length; j++) {
       if (this._sorted[j].startSeconds > chapter.startSeconds) {
         return this._sorted[j].startSeconds;
@@ -178,14 +167,12 @@ export class PlaybackController {
     }
   }
 
-  /** Seeks to a specific chapter in the shuffled queue by index. No-ops for out-of-range. */
   seekToChapter(index: number): void {
     if (index < 0 || index >= this._queue.length) return;
     dbg(`seekToChapter(${index}) called - queue[${index}]="${this._queue[index].title}"`);
     this._seek(index);
   }
 
-  /** Generates a fresh shuffle order and restarts playback from queue index 0. */
   reshuffle(): void {
     this._queue = this._shuffleFn([...this._sorted]);
     dbg(
@@ -195,7 +182,6 @@ export class PlaybackController {
     this._seek(0);
   }
 
-  /** Removes the timeupdate listener. Call when the video is unloaded. */
   destroy(): void {
     this._video.removeEventListener('timeupdate', this._bound);
   }

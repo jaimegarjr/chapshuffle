@@ -1,5 +1,3 @@
-// Bundles TypeScript source into dist/ and copies static assets so that
-// Chrome's "Load unpacked" only needs to be pointed at dist/.
 const esbuild = require('esbuild');
 const fs = require('fs');
 const watch = process.argv.includes('--watch');

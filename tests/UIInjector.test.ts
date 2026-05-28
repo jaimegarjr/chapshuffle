@@ -169,9 +169,9 @@ describe('UIInjector — queue panel visibility', () => {
     (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
 
     const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
-    expect(panel.style.top).toBe('88px');
+    expect(panel.style.top).toBe('auto');
     expect(panel.style.left).toBe('576px');
-    expect(panel.style.bottom).toBe('auto');
+    expect(panel.style.bottom).toBe('290px');
     expect(panel.style.right).toBe('auto');
     injector.destroy();
   });

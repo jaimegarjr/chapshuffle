@@ -46,7 +46,7 @@ const CSS = `
     --chapshuffle-header-height: 44px;
     --chapshuffle-row-height: 34px;
     position: fixed;
-    top: 96px;
+    top: auto;
     right: 24px;
     width: ${PANEL_WIDTH_PX}px;
     max-height: min(
@@ -441,18 +441,12 @@ export class UIInjector {
       Math.min(Math.max(preferredLeft, minVideoLeft), maxViewportLeft)
     );
 
-    const preferredTop = rect.bottom - PLAYER_CONTROLS_CLEARANCE_PX - maxPanelHeight;
-    const minVideoTop = rect.top + PANEL_MARGIN_PX;
-    const maxViewportTop = viewportHeight - maxPanelHeight - VIEWPORT_MARGIN_PX;
-    const top = Math.max(
-      VIEWPORT_MARGIN_PX,
-      Math.min(Math.max(preferredTop, minVideoTop), Math.max(VIEWPORT_MARGIN_PX, maxViewportTop))
-    );
+    const bottomFromViewport = viewportHeight - rect.bottom + PLAYER_CONTROLS_CLEARANCE_PX;
 
     panel.style.left = `${Math.round(left)}px`;
     panel.style.right = 'auto';
-    panel.style.top = `${Math.round(top)}px`;
-    panel.style.bottom = 'auto';
+    panel.style.top = 'auto';
+    panel.style.bottom = `${Math.round(Math.max(VIEWPORT_MARGIN_PX, bottomFromViewport))}px`;
     panel.style.maxHeight = `${Math.round(maxPanelHeight)}px`;
   }
 

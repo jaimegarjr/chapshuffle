@@ -298,9 +298,7 @@ export class UIInjector {
 
       if (sig !== lastSig) {
         // Chapter list is still changing (or just appeared) — wait to settle.
-        dbg(
-          `poll: chapters=${chapters?.length ?? 'null'} (changed), waiting for stable state`
-        );
+        dbg(`poll: chapters=${chapters?.length ?? 'null'} (changed), waiting for stable state`);
         lastSig = sig;
         return;
       }

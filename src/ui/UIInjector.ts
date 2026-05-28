@@ -2,16 +2,14 @@ import type { Chapter } from '../types';
 import { parse as parseChapters } from '../parser/ChapterParser';
 import { PlaybackController } from '../playback/PlaybackController';
 import {
-  getShuffleEnabled,
-  getMinChapters,
-  getQueueEndBehavior,
+  DEFAULT_SETTINGS,
+  getSettings,
+  settingsChangeFromChrome,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
 
-const STORAGE_KEY = 'shuffleEnabled';
-const QUEUE_END_KEY = 'queueEndBehavior';
 const VIDEO_SEL = 'video';
 
 export class UIInjector {
@@ -20,9 +18,9 @@ export class UIInjector {
   private _watcher: YouTubeChapterWatcher | null = null;
   private _controller: PlaybackController | null = null;
   private _video: HTMLVideoElement | null = null;
-  private _autoAdvance = true;
-  private _minChapters = 5;
-  private _queueEndBehavior: QueueEndBehavior = 'reshuffle';
+  private _autoAdvance = DEFAULT_SETTINGS.shuffleEnabled;
+  private _minChapters = DEFAULT_SETTINGS.minChapters;
+  private _queueEndBehavior: QueueEndBehavior = DEFAULT_SETTINGS.queueEndBehavior;
   private readonly _boundHighlightUpdate: () => void;
   private readonly _boundStorageChange: (changes: {
     [key: string]: chrome.storage.StorageChange;
@@ -36,11 +34,10 @@ export class UIInjector {
   }
 
   async init(): Promise<void> {
-    [this._autoAdvance, this._minChapters, this._queueEndBehavior] = await Promise.all([
-      getShuffleEnabled(),
-      getMinChapters(),
-      getQueueEndBehavior(),
-    ]);
+    const settings = await getSettings();
+    this._autoAdvance = settings.shuffleEnabled;
+    this._minChapters = settings.minChapters;
+    this._queueEndBehavior = settings.queueEndBehavior;
     chrome.storage.onChanged.addListener(this._boundStorageChange);
     this._shell.injectStyles();
     this._watcher = new YouTubeChapterWatcher(this._doc, {
@@ -54,18 +51,21 @@ export class UIInjector {
   }
 
   private _onStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
-    if (STORAGE_KEY in changes) {
-      this._autoAdvance = Boolean(changes[STORAGE_KEY].newValue);
+    const settingsChange = settingsChangeFromChrome(changes);
+    const shuffleEnabled = settingsChange.shuffleEnabled;
+    const queueEndBehavior = settingsChange.queueEndBehavior;
+    const minChapters = settingsChange.minChapters;
+
+    if (shuffleEnabled !== undefined) {
+      this._autoAdvance = shuffleEnabled;
       if (this._controller) this._controller.autoAdvance = this._autoAdvance;
     }
-    if (QUEUE_END_KEY in changes) {
-      const val = changes[QUEUE_END_KEY].newValue;
-      this._queueEndBehavior = val === 'end-video' ? 'end-video' : 'reshuffle';
+    if (queueEndBehavior !== undefined) {
+      this._queueEndBehavior = queueEndBehavior;
       if (this._controller) this._controller.queueEndBehavior = this._queueEndBehavior;
     }
-    if ('minChapters' in changes) {
-      const val = changes.minChapters.newValue;
-      this._minChapters = typeof val === 'number' && val >= 2 ? val : this._minChapters;
+    if (minChapters !== undefined) {
+      this._minChapters = minChapters;
       if (this._watcher) this._watcher.minChapters = this._minChapters;
     }
   }

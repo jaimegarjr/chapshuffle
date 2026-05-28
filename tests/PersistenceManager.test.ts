@@ -1,7 +1,11 @@
 import {
+  DEFAULT_SETTINGS,
   getMinChapters,
   getQueueEndBehavior,
+  getSettings,
   getShuffleEnabled,
+  normalizeSettings,
+  settingsChangeFromChrome,
   setMinChapters,
   setQueueEndBehavior,
   setShuffleEnabled,
@@ -45,6 +49,64 @@ beforeEach(() => {
 
 afterEach(() => {
   delete (global as unknown as Record<string, unknown>).chrome;
+});
+
+describe('PersistenceManager.normalizeSettings()', () => {
+  test('applies defaults and normalizes invalid stored values', () => {
+    expect(normalizeSettings({})).toEqual(DEFAULT_SETTINGS);
+    expect(
+      normalizeSettings({
+        shuffleEnabled: 'true',
+        minChapters: 1,
+        queueEndBehavior: 'loop',
+      })
+    ).toEqual(DEFAULT_SETTINGS);
+  });
+
+  test('preserves valid stored values', () => {
+    expect(
+      normalizeSettings({
+        shuffleEnabled: true,
+        minChapters: 2,
+        queueEndBehavior: 'end-video',
+      })
+    ).toEqual({
+      shuffleEnabled: true,
+      minChapters: 2,
+      queueEndBehavior: 'end-video',
+    });
+  });
+});
+
+describe('PersistenceManager.settingsChangeFromChrome()', () => {
+  test('returns only changed settings using storage normalization', () => {
+    const changes = settingsChangeFromChrome({
+      shuffleEnabled: { oldValue: false, newValue: true },
+      minChapters: { oldValue: 7, newValue: 1 },
+      unrelated: { oldValue: 'old', newValue: 'new' },
+    });
+
+    expect(changes).toEqual({
+      shuffleEnabled: true,
+      minChapters: DEFAULT_SETTINGS.minChapters,
+    });
+  });
+});
+
+describe('PersistenceManager.getSettings()', () => {
+  test('reads and normalizes all settings in one call', async () => {
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
+      shuffleEnabled: true,
+      minChapters: 8,
+      queueEndBehavior: 'end-video',
+    });
+
+    expect(await getSettings()).toEqual({
+      shuffleEnabled: true,
+      minChapters: 8,
+      queueEndBehavior: 'end-video',
+    });
+  });
 });
 
 describe('PersistenceManager.getShuffleEnabled()', () => {

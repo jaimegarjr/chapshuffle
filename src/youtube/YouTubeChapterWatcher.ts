@@ -1,10 +1,8 @@
 import type { Chapter } from '../types';
 import { parse as parseChapters } from '../parser/ChapterParser';
+import { createDebugLogger } from '../debug/DebugLogger';
 
-declare const __DEV__: boolean;
-function dbg(...args: unknown[]): void {
-  if (__DEV__) console.debug('[CS-nav]', ...args);
-}
+const debug = createDebugLogger('youtube-nav');
 
 const CONTROLS_SEL = '.ytp-right-controls';
 const VIDEO_SEL = 'video';
@@ -53,7 +51,7 @@ export class YouTubeChapterWatcher {
   }
 
   private _handleNavigate(): void {
-    dbg('yt-navigate-finish fired — url=' + (this._doc.location?.href ?? '?'));
+    debug.log('yt-navigate-finish fired - url=' + (this._doc.location?.href ?? '?'));
     this._onNavigate();
     this._startPoll();
   }
@@ -61,10 +59,10 @@ export class YouTubeChapterWatcher {
   private _startPoll(): void {
     this._stopPoll();
     let lastSig = '';
-    dbg('startPoll — waiting for stable chapter fingerprint');
+    debug.log('startPoll - waiting for stable chapter fingerprint');
     this._pollTimer = setInterval(() => {
       if (this._isInjected()) {
-        dbg('poll: already injected, stopping');
+        debug.log('poll: already injected, stopping');
         this._stopPoll();
         return;
       }
@@ -86,18 +84,20 @@ export class YouTubeChapterWatcher {
         chapters !== null ? chapters.map((c) => `${c.startSeconds}:${c.title}`).join('|') : '\0';
 
       if (sig !== lastSig) {
-        dbg(`poll: chapters=${chapters?.length ?? 'null'} (changed), waiting for stable state`);
+        debug.log(
+          `poll: chapters=${chapters?.length ?? 'null'} (changed), waiting for stable state`
+        );
         lastSig = sig;
         return;
       }
 
       this._stopPoll();
       if (chapters === null) {
-        dbg('poll: stable null — video has too few or no chapters, stopping');
+        debug.log('poll: stable null - video has too few or no chapters, stopping');
         return;
       }
 
-      dbg(`poll: stable — ${chapters.length} chapters confirmed across two ticks`);
+      debug.log(`poll: stable - ${chapters.length} chapters confirmed across two ticks`);
       if (chapters.length >= this._minChapters) {
         this._onChaptersReady(chapters, controls);
       }

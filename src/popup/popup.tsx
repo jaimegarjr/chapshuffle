@@ -1,28 +1,27 @@
 import { render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import {
-  getShuffleEnabled,
+  DEFAULT_SETTINGS,
+  getSettings,
   setShuffleEnabled,
-  getMinChapters,
   setMinChapters,
-  getQueueEndBehavior,
   setQueueEndBehavior,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
 
 function App() {
-  const [enabled, setEnabled] = useState(false);
-  const [minChapters, setMinChaptersState] = useState(5);
-  const [queueEnd, setQueueEndState] = useState<QueueEndBehavior>('reshuffle');
+  const [enabled, setEnabled] = useState(DEFAULT_SETTINGS.shuffleEnabled);
+  const [minChapters, setMinChaptersState] = useState(DEFAULT_SETTINGS.minChapters);
+  const [queueEnd, setQueueEndState] = useState<QueueEndBehavior>(
+    DEFAULT_SETTINGS.queueEndBehavior
+  );
 
   useEffect(() => {
-    Promise.all([getShuffleEnabled(), getMinChapters(), getQueueEndBehavior()]).then(
-      ([en, min, qe]) => {
-        setEnabled(en);
-        setMinChaptersState(min);
-        setQueueEndState(qe);
-      }
-    );
+    getSettings().then((settings) => {
+      setEnabled(settings.shuffleEnabled);
+      setMinChaptersState(settings.minChapters);
+      setQueueEndState(settings.queueEndBehavior);
+    });
   }, []);
 
   const handleToggle = (e: Event) => {

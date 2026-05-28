@@ -320,3 +320,140 @@ describe('UIInjector — cleanup', () => {
     expect(document.getElementById('chapshuffle-queue')).toBeNull();
   });
 });
+
+// ── navigation ─────────────────────────────────────────────────────────────
+
+describe('UIInjector — navigation (stale queue regression)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  /**
+   * Regression: opening the panel then navigating to a new video left the
+   * Preact component mounted with Video A's chapters still visible.
+   * yt-navigate-finish must tear everything down immediately.
+   */
+  test('yt-navigate-finish removes button and queue panel from DOM', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    // Open the panel — this is the state that triggered the stale-queue bug.
+    (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+    expect(document.getElementById('chapshuffle-queue')).not.toBeNull();
+
+    // Simulate YouTube navigation event.
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+
+    // Both button and panel must be gone immediately (no timers needed).
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+    expect(document.getElementById('chapshuffle-queue')).toBeNull();
+
+    injector.destroy();
+  });
+
+  test('after yt-navigate-finish, new chapters are injected for the new video', async () => {
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    // Open panel on Video A.
+    (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+    const videoAItems = document.querySelectorAll('.chapshuffle-item').length;
+    expect(videoAItems).toBe(5);
+
+    // Simulate navigation: swap in Video B's DOM (8 chapters).
+    document.body.innerHTML = '';
+    addPlayerControls(document);
+    addChapterItems(document, 8);
+    addVideoElement(document);
+
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+
+    // Navigation poll has a 1200ms initial delay, then a 500ms interval tick.
+    // flushAll() (jest.runAllTimers) advances past both.
+    await flushAll();
+
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
+    expect(document.querySelectorAll('.chapshuffle-item').length).toBe(8);
+
+    injector.destroy();
+  });
+
+  test('mid-video resume starts at the correct chapter, not index 0', async () => {
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    addPlayerControls(document);
+    addChapterItems(document, 5); // chapters at 0, 60, 120, 180, 240 s
+    const video = addVideoElement(document);
+    // Resume at 210 s — inside Chapter 4 (180–240 s).
+    video.currentTime = 210;
+
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    // Open panel so the active row is rendered.
+    (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+
+    // With Math.random=0 the queue is [C2@60, C3@120, C4@180, C5@240, C1@0].
+    // Chapter 4@180s is at queue index 2. The active row should point there,
+    // not at index 0, confirming _currentIndex was set correctly on construction.
+    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('2');
+
+    // A timeupdate at currentTime=210 must not auto-advance (210 < end@240).
+    video.dispatchEvent(new Event('timeupdate'));
+    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('2');
+
+    jest.mocked(Math.random).mockRestore();
+    injector.destroy();
+  });
+
+  /**
+   * Regression: the previous fix stopped polling when parseChapters returned
+   * null on the first tick after yt-navigate-finish. On YouTube, the event
+   * fires before chapter DOM nodes exist, so the poll quit immediately and the
+   * button was never injected for the new video.
+   */
+  test('chapters loading after yt-navigate-finish still triggers injection', async () => {
+    // Start on Video A.
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
+
+    // Navigate: clear the DOM. New page has controls but NO chapters yet.
+    document.body.innerHTML = '';
+    addPlayerControls(document);
+    addVideoElement(document);
+
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+
+    // Tick 1: poll runs, chapters null → sig='\0', changed from '' → continue
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+
+    // Chapters now arrive in the DOM (YouTube lazy-loaded them).
+    addChapterItems(document, 6);
+
+    // Tick 2: chapters found → new sig → changed from '\0' → continue
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+
+    // Tick 3: same chapters → stable → inject
+    jest.advanceTimersByTime(500);
+    await Promise.resolve();
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
+
+    injector.destroy();
+  });
+});

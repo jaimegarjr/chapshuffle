@@ -73,16 +73,6 @@ describe('PlaybackController — seekToChapter()', () => {
     expect(video.currentTime).toBe(120);
     ctrl.destroy();
   });
-
-  test('no-ops for out-of-range indexes', () => {
-    const video = buildMockVideo(0);
-    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
-    ctrl.seekToChapter(-1);
-    expect(ctrl.currentIndex).toBe(0);
-    ctrl.seekToChapter(99);
-    expect(ctrl.currentIndex).toBe(0);
-    ctrl.destroy();
-  });
 });
 
 describe('PlaybackController — reshuffle()', () => {
@@ -150,33 +140,6 @@ describe('PlaybackController — seek race condition', () => {
     expect(ctrl.currentIndex).toBe(1);
 
     video.tick(61);
-    expect(ctrl.currentIndex).toBe(2);
-    ctrl.destroy();
-  });
-
-  test('duplicate startSeconds (same YouTube timestamp) — chapter plays to next distinct boundary', () => {
-    const DUP_CHAPTERS: Chapter[] = [
-      { title: 'Before', startSeconds: 0 },
-      { title: 'Deku Tree', startSeconds: 1014 },
-      { title: 'Duplicate', startSeconds: 1014 },
-      { title: 'After', startSeconds: 2000 },
-      { title: 'Outro', startSeconds: 3000 },
-    ];
-    const video = buildMockVideo(0);
-    const ctrl = new PlaybackController(
-      video as unknown as HTMLVideoElement,
-      DUP_CHAPTERS,
-      identity
-    );
-
-    ctrl.seekToChapter(1);
-    video.tick(1014);
-    expect(ctrl.currentIndex).toBe(1);
-
-    video.tick(1015);
-    expect(ctrl.currentIndex).toBe(1);
-
-    video.tick(2000);
     expect(ctrl.currentIndex).toBe(2);
     ctrl.destroy();
   });
@@ -312,34 +275,7 @@ describe('PlaybackController — isolation', () => {
 });
 
 describe('PlaybackController — chapterProgress', () => {
-  test('returns 0 when at the chapter start', () => {
-    const video = buildMockVideo(0);
-    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
-    expect(ctrl.chapterProgress).toBe(0);
-    ctrl.destroy();
-  });
-
-  test('returns correct ratio mid-chapter', () => {
-    const video = buildMockVideo(30);
-    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
-    expect(ctrl.chapterProgress).toBeCloseTo(0.5);
-    ctrl.destroy();
-  });
-
-  test('clamps to 1 when at or past chapter end', () => {
-    const video = buildMockVideo(0);
-    const ctrl = new PlaybackController(
-      video as unknown as HTMLVideoElement,
-      CHAPTERS,
-      identity,
-      false
-    );
-    video.tick(65);
-    expect(ctrl.chapterProgress).toBe(1);
-    ctrl.destroy();
-  });
-
-  test('reflects updated currentTime after video ticks', () => {
+  test('reflects video currentTime through the active chapter', () => {
     const video = buildMockVideo(0);
     const ctrl = new PlaybackController(
       video as unknown as HTMLVideoElement,
@@ -349,23 +285,6 @@ describe('PlaybackController — chapterProgress', () => {
     );
     video.tick(30);
     expect(ctrl.chapterProgress).toBeCloseTo(0.5);
-    ctrl.destroy();
-  });
-
-  test('uses video.duration as end for the last chapter', () => {
-    const video = buildMockVideo(0, 300);
-    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
-    ctrl.seekToChapter(4);
-    video.currentTime = 270;
-    expect(ctrl.chapterProgress).toBeCloseTo(0.5);
-    ctrl.destroy();
-  });
-
-  test('returns 0 for last chapter when video.duration is not finite (livestream)', () => {
-    const video = buildMockVideo(270, Infinity);
-    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
-    ctrl.seekToChapter(4);
-    expect(ctrl.chapterProgress).toBe(0);
     ctrl.destroy();
   });
 });

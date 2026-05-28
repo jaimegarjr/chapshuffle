@@ -1,8 +1,6 @@
 import type { Chapter } from '../types';
-import { shuffle as defaultShuffle } from '../shuffle/ShuffleEngine';
 import type { QueueEndBehavior } from '../persistence/PersistenceManager';
-
-type ShuffleFn = (chapters: Chapter[]) => Chapter[];
+import { PlaybackTimeline, type ShuffleFn } from './PlaybackTimeline';
 
 declare const __DEV__: boolean;
 function dbg(...args: unknown[]): void {
@@ -11,10 +9,7 @@ function dbg(...args: unknown[]): void {
 
 export class PlaybackController {
   private readonly _video: HTMLVideoElement;
-  private readonly _sorted: Chapter[];
-  private readonly _shuffleFn: ShuffleFn;
-  private _queue: Chapter[];
-  private _currentIndex = 0;
+  private readonly _timeline: PlaybackTimeline;
   private _autoAdvance: boolean;
   private _queueEndBehavior: QueueEndBehavior;
   private readonly _bound: () => void;
@@ -28,38 +23,29 @@ export class PlaybackController {
     autoAdvance = true,
     queueEndBehavior: QueueEndBehavior = 'reshuffle'
   ) {
-    this._shuffleFn = shuffleFn ?? defaultShuffle;
     this._autoAdvance = autoAdvance;
     this._queueEndBehavior = queueEndBehavior;
     this._video = videoEl;
-    this._sorted = [...chapters].sort((a, b) => a.startSeconds - b.startSeconds);
-    this._queue = this._shuffleFn([...this._sorted]);
+    this._timeline = new PlaybackTimeline(chapters, shuffleFn);
     this._bound = this._onTimeUpdate.bind(this);
     if (videoEl.currentTime > 0) {
       this._seekTarget = videoEl.currentTime;
-      let resumeChapter = this._sorted[0];
-      for (const c of this._sorted) {
-        if (c.startSeconds <= videoEl.currentTime) resumeChapter = c;
-        else break;
-      }
-      const queueIdx = this._queue.findIndex((c) => c.startSeconds === resumeChapter.startSeconds);
-      if (queueIdx >= 0) this._currentIndex = queueIdx;
+      const resumeChapter = this._timeline.resumeAt(videoEl.currentTime);
       dbg(
         `mid-video resume — currentTime=${videoEl.currentTime.toFixed(2)}, ` +
-          `chapter="${resumeChapter.title}", _currentIndex=${this._currentIndex}`
+          `chapter="${resumeChapter?.title ?? '?'}", _currentIndex=${this._timeline.currentIndex}`
       );
     }
     videoEl.addEventListener('timeupdate', this._bound);
 
-    dbg('created - sorted:', this._sorted.map((c) => `${c.title}@${c.startSeconds}s`).join(', '));
     dbg(
       'initial queue:',
-      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', ')
+      this._timeline.queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', ')
     );
   }
 
   get currentIndex(): number {
-    return this._currentIndex;
+    return this._timeline.currentIndex;
   }
 
   set autoAdvance(value: boolean) {
@@ -73,43 +59,23 @@ export class PlaybackController {
   }
 
   get queue(): Chapter[] {
-    return [...this._queue];
+    return this._timeline.queue;
   }
 
   get chapterProgress(): number {
-    const chapter = this._queue[this._currentIndex];
-    const startSeconds = chapter.startSeconds;
-    let endSeconds = this._endSecondsFor(chapter);
-    if (!isFinite(endSeconds)) endSeconds = this._video.duration;
-    if (!isFinite(endSeconds) || endSeconds <= startSeconds) return 0;
-    const ratio = (this._video.currentTime - startSeconds) / (endSeconds - startSeconds);
-    return Math.min(1, Math.max(0, ratio));
-  }
-
-  private _endSecondsFor(chapter: Chapter): number {
-    const i = this._sorted.findIndex((c) => c.startSeconds === chapter.startSeconds);
-    if (i < 0) {
-      dbg(`WARN: chapter "${chapter.title}" (${chapter.startSeconds}s) not found in _sorted`);
-      return Infinity;
-    }
-    for (let j = i + 1; j < this._sorted.length; j++) {
-      if (this._sorted[j].startSeconds > chapter.startSeconds) {
-        return this._sorted[j].startSeconds;
-      }
-    }
-    return Infinity;
+    return this._timeline.progressAt(this._video.currentTime, this._video.duration);
   }
 
   private _seek(index: number): void {
-    const chapter = this._queue[index];
+    const chapter = this._timeline.seekToIndex(index);
+    if (!chapter) return;
     const prevTime = this._video.currentTime;
-    this._currentIndex = index;
     this._seekTarget = chapter.startSeconds;
     this._suppressCount = 0;
     this._video.currentTime = this._seekTarget;
     dbg(
       `seek -> [${index}] "${chapter.title}" start=${chapter.startSeconds}s` +
-        ` end=${this._endSecondsFor(chapter)}s` +
+        ` end=${this._timeline.endSecondsFor(chapter)}s` +
         ` (was currentTime=${prevTime.toFixed(2)}, _seekTarget=${this._seekTarget})`
     );
   }
@@ -130,11 +96,11 @@ export class PlaybackController {
         return;
       }
 
-      const chapter = this._queue[this._currentIndex];
+      const chapter = this._timeline.currentChapter;
       dbg(
         `timeupdate settled after ${this._suppressCount} suppressed ticks - ` +
           `currentTime=${currentTime.toFixed(2)} _seekTarget=${this._seekTarget} ` +
-          `chapter="${chapter.title}" end=${this._endSecondsFor(chapter)}`
+          `chapter="${chapter?.title ?? '?'}" end=${this._timeline.currentEndSeconds()}`
       );
       this._seekTarget = null;
       this._suppressCount = 0;
@@ -143,11 +109,10 @@ export class PlaybackController {
 
     if (!this._autoAdvance) return;
 
-    const chapter = this._queue[this._currentIndex];
-    const endSeconds = this._endSecondsFor(chapter);
+    const chapter = this._timeline.currentChapter;
+    const endSeconds = this._timeline.currentEndSeconds();
     if (currentTime >= endSeconds) {
-      const isLastChapter = this._currentIndex === this._queue.length - 1;
-      if (isLastChapter) {
+      if (this._timeline.isLastChapter) {
         dbg(`queue end - behavior=${this._queueEndBehavior}`);
         if (this._queueEndBehavior === 'end-video') {
           const duration = this._video.duration;
@@ -156,11 +121,12 @@ export class PlaybackController {
           this.reshuffle();
         }
       } else {
-        const nextIndex = this._currentIndex + 1;
+        const nextIndex = this._timeline.currentIndex + 1;
+        const nextChapter = this._timeline.queue[nextIndex];
         dbg(
           `auto-advance - currentTime=${currentTime.toFixed(2)} >= end=${endSeconds}` +
-            ` "[${this._currentIndex}]${chapter.title}" -> ` +
-            `"[${nextIndex}]${this._queue[nextIndex].title}"`
+            ` "[${this._timeline.currentIndex}]${chapter?.title ?? '?'}" -> ` +
+            `"[${nextIndex}]${nextChapter?.title ?? '?'}"`
         );
         this._seek(nextIndex);
       }
@@ -168,16 +134,16 @@ export class PlaybackController {
   }
 
   seekToChapter(index: number): void {
-    if (index < 0 || index >= this._queue.length) return;
-    dbg(`seekToChapter(${index}) called - queue[${index}]="${this._queue[index].title}"`);
+    dbg(`seekToChapter(${index}) called`);
     this._seek(index);
   }
 
   reshuffle(): void {
-    this._queue = this._shuffleFn([...this._sorted]);
+    const chapter = this._timeline.reshuffle();
+    if (!chapter) return;
     dbg(
       'reshuffle - new queue:',
-      this._queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', ')
+      this._timeline.queue.map((c, i) => `[${i}]${c.title}@${c.startSeconds}s`).join(', ')
     );
     this._seek(0);
   }

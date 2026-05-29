@@ -1,0 +1,80 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, without the leading v
+        required: true
+        type: string
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate version
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "error: version must look like X.Y.Z"
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --heads origin "release/$VERSION" >/dev/null 2>&1; then
+            echo "error: release/$VERSION already exists"
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "v$VERSION" >/dev/null 2>&1; then
+            echo "error: tag v$VERSION already exists"
+            exit 1
+          fi
+
+      - name: Bump manifest version
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ inputs.version }}"
+          node -e "
+            const fs = require('fs');
+            const manifestPath = 'manifest.json';
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            manifest.version = process.env.VERSION;
+            fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+          "
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Create release pull request
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ inputs.version }}"
+          BRANCH="release/$VERSION"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add manifest.json
+          git commit -m "chore: release v$VERSION"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --title "Release v$VERSION" \
+            --body "Bumps the extension manifest to v$VERSION. Merge this PR, then run the Publish Release workflow with version $VERSION." \
+            --base main \
+            --head "$BRANCH" \
+            --draft
+        env:
+          GH_TOKEN: ${{ github.token }}

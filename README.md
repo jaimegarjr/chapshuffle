@@ -25,8 +25,13 @@ access to read chapter data and Chrome storage to remember your settings.
 
 ## Releasing
 
-1. Run `just release X.Y.Z`.
-2. Open and merge the pushed `release/X.Y.Z` branch as a PR.
-3. Run the `Tag Release` GitHub Actions workflow with version `X.Y.Z`.
+1. Run the `Prepare Release` GitHub Actions workflow with version `X.Y.Z`.
+2. Merge the generated `release/X.Y.Z` PR.
+3. Run the `Publish Release` GitHub Actions workflow with version `X.Y.Z`.
 
-The tag workflow creates `vX.Y.Z` from `main`, which starts the release workflow.
+`Publish Release` creates the `vX.Y.Z` tag from `main`, builds the release zip,
+and creates the GitHub Release. It can also upload the zip to Chrome Web Store
+without submitting it for review.
+
+If you upload to Chrome Web Store, run `Submit Chrome Web Store` when you are
+ready to submit the latest uploaded package for review.

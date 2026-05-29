@@ -1,0 +1,252 @@
+<!DOCTYPE html><html lang="en"><head><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" class="">
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Chap Shuffle Banner</title>
+<!-- Tailwind CSS CDN with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts for Typography -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style data-purpose="base-typography">
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #0f0f0f;
+      overflow: hidden;
+    }
+  </style>
+<style data-purpose="banner-layout">
+    /* Main container sizing to match 1280x800 aspect ratio requirements */
+    .banner-container {
+      width: 1280px;
+      height: 800px;
+      position: relative;
+      background-color: #0a0a0a;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    /* Circuit board background effect simulation */
+    .circuit-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.1;
+      background-image: 
+        linear-gradient(rgba(255, 0, 0, 0.1) 1px, transparent 1px),
+        linear-gradient(90px, rgba(255, 0, 0, 0.1) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Red glow in the background */
+    .red-glow {
+      position: absolute;
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(255, 0, 0, 0.12) 0%, rgba(255, 0, 0, 0) 70%);
+      bottom: -200px;
+      right: -200px;
+      pointer-events: none;
+    }
+
+    .red-glow-left {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(255, 0, 0, 0.08) 0%, rgba(255, 0, 0, 0) 70%);
+      top: 100px;
+      left: -100px;
+      pointer-events: none;
+    }
+  </style>
+<style data-purpose="ui-components">
+    /* Glassmorphism for the Shuffle Queue window - Updated based on IMAGE_2 */
+    .glass-panel {
+      background: rgba(18, 18, 18, 0.95);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px 0 rgba(0, 0, 0, 0.6);
+    }
+
+    /* Red Progress Bar at the top - Matches IMAGE_2 */
+    .progress-bar-container {
+      height: 3px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 35%;
+      background-color: #ff0000;
+    }
+
+    /* Custom scrollbar for queue */
+    .queue-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .queue-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .queue-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+    
+    .track-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-neutral-900">
+<!-- BEGIN: BannerMain -->
+<div class="banner-container shadow-2xl scale-75 lg:scale-100" id="main-banner">
+<!-- BEGIN: YouTube Interface Background (Mockup based on IMAGE_4) -->
+<div class="absolute inset-0 z-0 opacity-40 pointer-events-none">
+<!-- Search Bar -->
+<div class="absolute top-0 left-0 w-full p-4 flex items-center gap-4">
+<div class="flex items-center gap-2 mr-8">
+<svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"></path></svg>
+<span class="font-bold text-lg tracking-tighter">YouTube</span>
+</div>
+<div class="flex-1 max-w-xl h-10 bg-neutral-900 border border-neutral-800 rounded-full flex items-center px-4">
+<div class="text-neutral-600 text-sm">Search</div>
+</div>
+<div class="flex gap-4 ml-auto">
+<div class="w-8 h-8 rounded-full bg-neutral-800"></div>
+<div class="w-8 h-8 rounded-full bg-neutral-800"></div>
+<div class="w-8 h-8 rounded-full bg-neutral-700"></div>
+</div>
+</div>
+<!-- Sidebar Icons -->
+<div class="absolute left-0 top-20 h-full w-16 flex flex-col items-center gap-8 pt-4">
+<div class="w-6 h-6 bg-neutral-800 rounded"></div>
+<div class="w-6 h-6 bg-neutral-800 rounded"></div>
+<div class="w-6 h-6 bg-neutral-800 rounded"></div>
+<div class="w-6 h-6 bg-neutral-800 rounded"></div>
+</div>
+<!-- Video Player Skeleton -->
+<div class="absolute top-24 left-24 right-24 bottom-24 bg-neutral-900/40 border border-white/5 rounded-2xl"></div>
+</div>
+<!-- END: YouTube Interface Background -->
+<div class="circuit-bg"></div>
+<div class="red-glow"></div>
+<div class="red-glow-left"></div>
+<div class="relative w-full h-full flex items-center px-24 gap-16">
+<!-- BEGIN: LeftSection -->
+<div class="flex items-center gap-12 z-10">
+<!-- Main Shuffle Icon with Glow - Updated to data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAQACAYAAADGL/h7AAABUklEQVR4AezYvVEDQRBE4UVKAIcgyACbIIiSIhZMksDFofTzZoy51oUgPVXPXt+UnP1Klg5r93FxC6KHHiHgzyEwqHqAENEjMKh6gBDRIzCoeoAQ0SMwqHqAENEjMKh6gBDRIzCoeoAQ2XssF6FD1QOEiB6BQdUDhIgegUHVA4SIHoFB1QOEiB6BQdUDhIgegUHVA4SIHoFB1QOEiB6BQd15LP8AACVzV0CXtV7rcjzfmI+63JHyzvKFOdXiifLM/DHHWvyz+eLllzkfePmhLJ7fzGd9o95nXAxFFz2aYQ49hqKLHs0whx5D0UWPZphDj6HookczzKHHUHTRoxnm0GMouujRDHM8sgcIXh+EiB6BQdUDhIgegUHVA4SIHoFB1QOEiB6BQdUDhIgegUHVA4SIHoFB1QOEiB6BQdUDhMiNR+1dlMI2emwW1fQohW3uyeMKAAD//7FKROMAAAAGSURBVAMASwEVAbsHCOcAAAAASUVORK5CYII= style -->
+<div class="relative w-52 h-52 bg-neutral-900/90 rounded-3xl border-4 border-red-600/50 flex items-center justify-center shadow-[0_0_60px_rgba(255,0,0,0.25)]"><svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 24 24" fill="none" stroke="#FF0000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shuffle-icon lucide-shuffle w-36 h-36 object-contain drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]"><path d="m18 14 4 4-4 4"></path><path d="m18 2 4 4-4 4"></path><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"></path><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"></path><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"></path></svg></div>
+<!-- BEGIN: ShuffleQueueUI - Updated to match IMAGE_2 -->
+<div class="glass-panel w-[340px] rounded-2xl overflow-hidden flex flex-col">
+<!-- Window Header -->
+<div class="px-5 py-4 flex justify-between items-center bg-[#181818]">
+<div class="flex items-center gap-6">
+<span class="text-[11px] font-bold tracking-[0.1em] text-neutral-400 uppercase">Shuffle Queue</span>
+<div class="flex items-center gap-4 text-neutral-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5m7-7l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14m-7-7l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</div>
+</div>
+<button class="flex items-center gap-2 bg-[#2a2a2a] hover:bg-[#3a3a3a] border border-white/10 text-white rounded-full px-4 py-1.5 transition-all">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span class="text-[12px] font-semibold">Reshuffle</span>
+</button>
+</div>
+<!-- Progress Bar at top of list -->
+<div class="progress-bar-container">
+<div class="progress-bar-fill shadow-[0_0_8px_rgba(255,0,0,0.5)]"></div>
+</div>
+<!-- Queue List - Content from IMAGE_2 -->
+<div class="px-1 py-2 queue-scroll max-h-[380px] overflow-y-auto bg-[#0f0f0f]/50"><!-- Track 1 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">27 | New Beginning</span>
+<span class="text-[13px] text-neutral-500 font-medium">1:15:59</span>
+</div>
+<!-- Track 2 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">15 | Darkness</span>
+<span class="text-[13px] text-neutral-500 font-medium">39:45</span>
+</div>
+<!-- Track 3 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">05 | Blind Alley</span>
+<span class="text-[13px] text-neutral-500 font-medium">11:21</span>
+</div>
+<!-- Track 4 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">34 | Rivers in the Desert</span>
+<span class="text-[13px] text-neutral-500 font-medium">1:35:02</span>
+</div>
+<!-- Track 5 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">35 | Freedom and Security</span>
+<span class="text-[13px] text-neutral-500 font-medium">1:39:51</span>
+</div>
+<!-- Track 6 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">21 | Price</span>
+<span class="text-[13px] text-neutral-500 font-medium">58:00</span>
+</div>
+<!-- Track 7 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">30 | Break it Down</span>
+<span class="text-[13px] text-neutral-500 font-medium">1:24:16</span>
+</div>
+<!-- Track 8 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">20 | BAR Yuu Corner</span>
+<span class="text-[13px] text-neutral-500 font-medium">55:26</span>
+</div>
+<!-- Track 9 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">14 | Time Castle</span>
+<span class="text-[13px] text-neutral-500 font-medium">37:53</span>
+</div>
+<!-- Track 10 -->
+<div class="track-item flex justify-between items-center px-4 py-3 cursor-default">
+<span class="text-[14px] font-medium text-white">10 | Maya's Theme</span>
+<span class="text-[13px] text-neutral-500 font-medium">25:07</span>
+</div></div>
+</div>
+<!-- END: ShuffleQueueUI -->
+</div>
+<!-- END: LeftSection -->
+<!-- BEGIN: RightSection (Text Content) -->
+<div class="flex-1 flex flex-col justify-center items-start z-10">
+<div class="space-y-0 mb-4">
+<h1 class="text-[110px] leading-[0.85] font-extrabold tracking-tight text-white drop-shadow-2xl">
+            Chap<br>Shuffle
+          </h1>
+<div class="h-2 w-full max-w-[420px] bg-red-600 mt-6 rounded-full shadow-[0_4px_20px_rgba(220,38,38,0.6)]"></div>
+</div>
+<p class="text-3xl font-medium text-neutral-300 tracking-tight mt-8">
+          Auto-advance through<br>
+<span class="text-white font-bold">shuffled chapters</span>
+</p>
+</div>
+<!-- END: RightSection -->
+</div>
+<!-- BEGIN: ChromeStoreBadge -->
+<div class="absolute bottom-10 right-10 z-20">
+<div class="bg-white px-5 py-3 rounded-2xl flex items-center gap-4 shadow-2xl hover:scale-105 transition-transform cursor-pointer group">
+<div class="w-10 h-10 flex items-center justify-center">
+<img alt="Chrome Web Store" class="w-9 h-9" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDc5IJ-WSWGGK2t-mKTFObSsskrXaJfvlRvYgaXosBQUSUxR5o7dd3ke_b2N_Gv-LOC5cmlrgOuH-kJBzYEkm-cskj1qptNuVO8FtMSvErdorHAKcWV1GJuXyua9cd2qGPTLt7PDp3pTj6dRhRkw1XdKuXGPa8IHYNtTVWhUHOkgbC9atSLrWVTN6KvNVibJ7A2lO5fsbgag0_h1aQuPVLqySOJp8Q8PKcZK1ySzi7Ktp_dFOlI4wdnegQPfElBCJbmp_gTApEYpdOq">
+</div>
+<div class="flex flex-col leading-none">
+<span class="text-[11px] uppercase font-bold text-neutral-500 tracking-widest">AVAILABLE IN THE</span>
+<span class="text-[17px] font-extrabold text-neutral-900">chrome web store</span>
+</div>
+</div>
+</div>
+<!-- END: ChromeStoreBadge -->
+</div>
+<!-- END: BannerMain -->
+
+
+</body></html>

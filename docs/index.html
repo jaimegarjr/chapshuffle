@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chap Shuffle</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 16px;
+        line-height: 1.65;
+        background: #0f0f0f;
+        color: #e8e8e8;
+        padding: 48px 24px 80px;
+        min-height: 100vh;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(204, 0, 0, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(204, 0, 0, 0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      .glow {
+        position: fixed;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(204, 0, 0, 0.1) 0%, transparent 70%);
+        top: -150px;
+        right: -150px;
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 40px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      header svg { flex-shrink: 0; }
+
+      header h1 {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+
+      header span {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.4);
+        display: block;
+        margin-top: 2px;
+        font-weight: 400;
+      }
+
+      .hero {
+        margin-bottom: 40px;
+      }
+
+      .hero p {
+        font-size: 15px;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.75;
+      }
+
+      h2 {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.45);
+        margin: 32px 0 16px;
+      }
+
+      .steps {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .steps li {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .step-num {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(204, 0, 0, 0.15);
+        border: 1px solid rgba(204, 0, 0, 0.4);
+        color: #cc0000;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 2px;
+      }
+
+      .steps strong { color: #fff; font-weight: 600; }
+
+      .cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 420px) {
+        .cards { grid-template-columns: 1fr; }
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s, border-color 0.15s;
+      }
+
+      a.card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+
+      .card-cta {
+        border-color: rgba(204, 0, 0, 0.3);
+        background: rgba(204, 0, 0, 0.07);
+      }
+
+      a.card-cta:hover {
+        background: rgba(204, 0, 0, 0.13) !important;
+        border-color: rgba(204, 0, 0, 0.5) !important;
+      }
+
+      .card-soon {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .card-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.38);
+        line-height: 1.45;
+      }
+
+      footer {
+        margin-top: 48px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.25);
+      }
+
+      footer a {
+        color: rgba(255, 255, 255, 0.35);
+        text-decoration: none;
+      }
+
+      footer a:hover { color: rgba(255, 255, 255, 0.55); }
+    </style>
+  </head>
+  <body>
+    <div class="glow"></div>
+    <div class="container">
+      <header>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#cc0000"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m18 14 4 4-4 4" />
+          <path d="m18 2 4 4-4 4" />
+          <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" />
+          <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2" />
+          <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
+        </svg>
+        <div>
+          <h1>Chap Shuffle</h1>
+          <span>Thanks for installing!</span>
+        </div>
+      </header>
+
+      <div class="hero">
+        <p>
+          Chap Shuffle adds a shuffle button directly to the YouTube player. On any video with
+          5 or more chapters, click it to randomize the queue and auto-advance through chapters
+          like tracks on an album — great for soundtracks, long-form mixes, compilations, and
+          anything where the chapters stand on their own.
+        </p>
+      </div>
+
+      <h2>Get started</h2>
+      <ol class="steps">
+        <li>
+          <span class="step-num">1</span>
+          <span
+            >Open a YouTube video that has chapters — look for timestamps in the description or
+            chapter markers on the progress bar.</span
+          >
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <span
+            >Click the <strong>⇄ shuffle icon</strong> that appears in the player controls
+            bar.</span
+          >
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <span
+            >The queue opens with chapters in random order. Hit play and let it run, or navigate
+            manually with the arrow buttons.</span
+          >
+        </li>
+      </ol>
+
+      <h2>Links</h2>
+      <div class="cards">
+        <!-- TODO: replace with a specific YouTube video that has 5+ chapters -->
+        <a
+          href="https://www.youtube.com/results?search_query=youtube+video+with+chapters"
+          class="card card-cta"
+          target="_blank"
+          rel="noopener"
+        >
+          <span class="card-title">▶ Try it out</span>
+          <span class="card-sub">Find a video with chapters to test with</span>
+        </a>
+        <a
+          href="https://github.com/jaimegarjr/chapshuffle"
+          class="card"
+          target="_blank"
+          rel="noopener"
+        >
+          <span class="card-title">⌥ Source code</span>
+          <span class="card-sub">github.com/jaimegarjr/chapshuffle</span>
+        </a>
+        <a href="./privacy.html" class="card">
+          <span class="card-title">§ Privacy policy</span>
+          <span class="card-sub">No data collected, ever</span>
+        </a>
+        <span class="card card-soon">
+          <span class="card-title">♥ Support development</span>
+          <span class="card-sub">Coming soon</span>
+        </span>
+      </div>
+
+      <footer>
+        Chap Shuffle by
+        <a href="https://github.com/jaimegarjr" target="_blank" rel="noopener">jaimegarjr</a>
+        &nbsp;·&nbsp;
+        <a href="./privacy.html">Privacy policy</a>
+      </footer>
+    </div>
+  </body>
+</html>

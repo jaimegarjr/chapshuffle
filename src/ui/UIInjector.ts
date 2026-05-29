@@ -101,9 +101,15 @@ export class UIInjector {
     getTutorialComplete()
       .then((complete) => {
         if (!complete && this._shell.isMounted) {
-          this._tutorial = new TutorialManager(this._doc, () => {
-            setTutorialComplete(true);
-          });
+          this._tutorial = new TutorialManager(
+            this._doc,
+            () => {
+              setTutorialComplete(true);
+            },
+            () => {
+              this._shell.openPanel();
+            }
+          );
           this._tutorial.start();
         }
       })

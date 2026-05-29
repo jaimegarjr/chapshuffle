@@ -124,14 +124,16 @@ const TUTORIAL_CSS = `
 export class TutorialManager {
   private readonly _doc: Document;
   private readonly _onComplete: () => void;
+  private readonly _openPanel: (() => void) | null;
   private _step = 0;
   private _overlay: HTMLElement | null = null;
   private _anchorEl: Element | null = null;
   private _anchorClickHandler: (() => void) | null = null;
 
-  constructor(doc: Document, onComplete: () => void) {
+  constructor(doc: Document, onComplete: () => void, openPanel?: () => void) {
     this._doc = doc;
     this._onComplete = onComplete;
+    this._openPanel = openPanel ?? null;
   }
 
   get isActive(): boolean {
@@ -155,11 +157,19 @@ export class TutorialManager {
       this.skip();
       return;
     }
+    // Detach the anchor listener before opening the panel — the open
+    // call may trigger a click on the anchor element, which would cause
+    // a re-entrant next() call if the listener were still attached.
+    this._detachAnchorListener();
     if (STEPS[nextStep].openPanelBefore) {
       const panel = this._doc.getElementById('chapshuffle-queue');
       if (panel && panel.style.display !== 'block') {
-        panel.style.display = 'block';
-        this._doc.getElementById('chapshuffle-btn')?.setAttribute('aria-expanded', 'true');
+        if (this._openPanel) {
+          this._openPanel();
+        } else {
+          panel.style.display = 'block';
+          this._doc.getElementById('chapshuffle-btn')?.setAttribute('aria-expanded', 'true');
+        }
       }
     }
     this._step = nextStep;
@@ -290,12 +300,16 @@ export class TutorialManager {
     arrow.style.left = `${Math.max(ARROW_HALF + 4, Math.min(arrowCenterInPopover - ARROW_HALF, POPUP_WIDTH - ARROW_HALF * 2 - 4))}px`;
   }
 
-  private _removeOverlay(): void {
+  private _detachAnchorListener(): void {
     if (this._anchorEl && this._anchorClickHandler) {
       this._anchorEl.removeEventListener('click', this._anchorClickHandler);
       this._anchorEl = null;
       this._anchorClickHandler = null;
     }
+  }
+
+  private _removeOverlay(): void {
+    this._detachAnchorListener();
     this._overlay?.remove();
     this._overlay = null;
   }

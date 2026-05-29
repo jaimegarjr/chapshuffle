@@ -235,6 +235,17 @@ export class InjectedQueueShell {
     }
   }
 
+  openPanel(): void {
+    const panel = this._doc.getElementById(PANEL_ID);
+    const btn = this._doc.getElementById(BTN_ID);
+    if (!panel || panel.style.display === 'block') return;
+    this._positionPanelOverVideo(panel);
+    this._onOpen();
+    panel.style.display = 'block';
+    btn?.setAttribute('aria-expanded', 'true');
+    if (btn) btn.title = 'chapshuffle: close queue';
+  }
+
   unmount(): void {
     if (this._panelMount) {
       unmountQueuePanel(this._panelMount);

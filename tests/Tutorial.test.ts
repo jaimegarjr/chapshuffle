@@ -146,15 +146,32 @@ describe('TutorialManager — DOM button interactions', () => {
 });
 
 describe('TutorialManager — panel opening', () => {
-  test('advancing from step 0 to step 1 sets #chapshuffle-queue panel display to block', () => {
+  test('advancing from step 0 to step 1 calls the openPanel callback', () => {
     const doc = setupDoc();
     addTutorialTargets(doc);
-    const tm = new TutorialManager(doc, () => {});
+    const openPanel = jest.fn(() => {
+      const panel = doc.getElementById('chapshuffle-queue');
+      if (panel) panel.style.display = 'block';
+    });
+    const tm = new TutorialManager(doc, () => {}, openPanel);
     tm.start();
     const queue = doc.getElementById('chapshuffle-queue')!;
     expect(queue.style.display).toBe('none');
-    tm.next(); // step 1 has openPanelBefore: true
+    tm.next();
+    expect(openPanel).toHaveBeenCalledTimes(1);
     expect(queue.style.display).toBe('block');
+  });
+
+  test('openPanel callback is not called when panel is already open', () => {
+    const doc = setupDoc();
+    addTutorialTargets(doc);
+    const queue = doc.getElementById('chapshuffle-queue')!;
+    queue.style.display = 'block';
+    const openPanel = jest.fn();
+    const tm = new TutorialManager(doc, () => {}, openPanel);
+    tm.start();
+    tm.next();
+    expect(openPanel).not.toHaveBeenCalled();
   });
 });
 

@@ -112,6 +112,48 @@ describe('InjectedQueueShell', () => {
     expect(panel.style.right).toBe('auto');
   });
 
+  test('openPanel() positions and shows the panel, calling onOpen', () => {
+    const controls = addPlayerControls(document);
+    const video = addVideoElement(document);
+    video.getBoundingClientRect = jest.fn(
+      () =>
+        ({
+          x: 100,
+          y: 50,
+          top: 50,
+          right: 900,
+          bottom: 550,
+          left: 100,
+          width: 800,
+          height: 500,
+          toJSON: () => ({}),
+        }) as DOMRect
+    );
+    const onOpen = jest.fn();
+    const shell = new InjectedQueueShell(document, onOpen);
+    shell.mount(controls);
+    shell.render(props());
+
+    shell.openPanel();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLElement;
+    expect(panel.style.display).toBe('block');
+    expect(document.getElementById('chapshuffle-btn')!.getAttribute('aria-expanded')).toBe('true');
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  test('openPanel() is a no-op when the panel is already open', () => {
+    const controls = addPlayerControls(document);
+    addVideoElement(document);
+    const onOpen = jest.fn();
+    const shell = new InjectedQueueShell(document, onOpen);
+    shell.mount(controls);
+    shell.render(props());
+    shell.openPanel(); // first call opens it
+    shell.openPanel(); // second call should be a no-op
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
   test('unmount removes injected controls and panel', () => {
     const controls = addPlayerControls(document);
     const shell = new InjectedQueueShell(document, () => {});

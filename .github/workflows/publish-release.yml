@@ -58,6 +58,9 @@ jobs:
             exit 1
           fi
 
+      - name: Build & package
+        run: just zip
+
       - name: Create release tag
         run: |
           set -euo pipefail
@@ -65,9 +68,6 @@ jobs:
           VERSION="${{ inputs.version }}"
           git tag "v$VERSION"
           git push origin "v$VERSION"
-
-      - name: Build & package
-        run: just zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

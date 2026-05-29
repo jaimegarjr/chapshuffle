@@ -123,4 +123,29 @@ describe('InjectedQueueShell', () => {
     expect(document.getElementById('chapshuffle-btn')).toBeNull();
     expect(document.getElementById('chapshuffle-queue')).toBeNull();
   });
+
+  test('updateShuffleState(false) adds data-shuffle-off="true" attribute to button', () => {
+    const controls = addPlayerControls(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+
+    shell.updateShuffleState(false);
+
+    const btn = document.getElementById('chapshuffle-btn');
+    expect(btn).not.toBeNull();
+    expect(btn!.getAttribute('data-shuffle-off')).toBe('true');
+  });
+
+  test('updateShuffleState(true) removes data-shuffle-off attribute', () => {
+    const controls = addPlayerControls(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+
+    shell.updateShuffleState(false);
+    shell.updateShuffleState(true);
+
+    const btn = document.getElementById('chapshuffle-btn');
+    expect(btn).not.toBeNull();
+    expect(btn!.hasAttribute('data-shuffle-off')).toBe(false);
+  });
 });

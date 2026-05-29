@@ -4,11 +4,13 @@ import {
   getQueueEndBehavior,
   getSettings,
   getShuffleEnabled,
+  getTutorialComplete,
   normalizeSettings,
   settingsChangeFromChrome,
   setMinChapters,
   setQueueEndBehavior,
   setShuffleEnabled,
+  setTutorialComplete,
 } from '../src/persistence/PersistenceManager';
 
 interface MockStore {
@@ -172,5 +174,31 @@ describe('PersistenceManager.setQueueEndBehavior()', () => {
   test('writes the selected queue-end behavior to storage', async () => {
     await setQueueEndBehavior('end-video');
     expect(chromeStore().queueEndBehavior).toBe('end-video');
+  });
+});
+
+describe('PersistenceManager.getTutorialComplete()', () => {
+  test('defaults to false when storage is empty', async () => {
+    expect(await getTutorialComplete()).toBe(false);
+  });
+
+  test('returns false when stored value is not exactly true', async () => {
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
+      tutorialComplete: 'true',
+    });
+    expect(await getTutorialComplete()).toBe(false);
+  });
+});
+
+describe('PersistenceManager.setTutorialComplete()', () => {
+  test('persists and round-trips: set true then get returns true', async () => {
+    await setTutorialComplete(true);
+    expect(await getTutorialComplete()).toBe(true);
+  });
+
+  test('persists and round-trips: set false then get returns false', async () => {
+    await setTutorialComplete(true);
+    await setTutorialComplete(false);
+    expect(await getTutorialComplete()).toBe(false);
   });
 });

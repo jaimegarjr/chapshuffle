@@ -45,7 +45,7 @@ zip: ci
     cd dist && zip -r ../chapshuffle-v$VERSION.zip .
     echo "  → chapshuffle-v$VERSION.zip ready for Chrome Web Store upload"
 
-# Bump manifest.json version, commit, and push a tag — triggers the release workflow
+# Bump manifest.json version, commit, and push a release PR branch
 # Usage: just release 1.2.3
 release version:
     #!/usr/bin/env bash
@@ -54,6 +54,7 @@ release version:
     if ! git diff --quiet || ! git diff --cached --quiet; then
       echo "error: working tree is dirty — commit or stash changes first"; exit 1
     fi
+    git switch -c "release/{{version}}"
     node -e "
       const fs = require('fs');
       const m = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
@@ -62,9 +63,8 @@ release version:
     "
     git add manifest.json
     git commit -m "chore: release v{{version}}"
-    git tag "v{{version}}"
-    git push origin HEAD "v{{version}}"
-    echo "  → tagged v{{version}} and pushed — release workflow is running"
+    git push -u origin "release/{{version}}"
+    echo "  → pushed release/{{version}} — open a PR, merge it, then run the Tag Release workflow"
 
 # Tell user how to load the extension in Chrome
 load:

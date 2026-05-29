@@ -22,3 +22,11 @@ YouTube video where the chapters can stand on their own.
 
 Chap Shuffle only runs on YouTube and uses minimal permissions: YouTube page
 access to read chapter data and Chrome storage to remember your settings.
+
+## Releasing
+
+1. Run `just release X.Y.Z`.
+2. Open and merge the pushed `release/X.Y.Z` branch as a PR.
+3. Run the `Tag Release` GitHub Actions workflow with version `X.Y.Z`.
+
+The tag workflow creates `vX.Y.Z` from `main`, which starts the release workflow.

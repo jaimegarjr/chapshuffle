@@ -64,6 +64,28 @@ function addVideoElement(doc: Document): HTMLVideoElement {
   return video;
 }
 
+function dragItem(fromIndex: number, toIndex: number): void {
+  const data = new Map<string, string>();
+  const dataTransfer = {
+    effectAllowed: '',
+    dropEffect: '',
+    setData: jest.fn((type: string, value: string) => data.set(type, value)),
+    getData: jest.fn((type: string) => data.get(type) ?? ''),
+  };
+  const items = () => Array.from(document.querySelectorAll<HTMLElement>('.chapshuffle-item'));
+  const start = new Event('dragstart', { bubbles: true, cancelable: true });
+  Object.defineProperty(start, 'dataTransfer', { value: dataTransfer });
+  items()[fromIndex].dispatchEvent(start);
+
+  const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
+  Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
+  items()[toIndex].dispatchEvent(dragOver);
+
+  const drop = new Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
+  items()[toIndex].dispatchEvent(drop);
+}
+
 async function flushAll(): Promise<void> {
   jest.runAllTimers();
   await Promise.resolve();
@@ -195,6 +217,7 @@ describe('UIInjector — queue content', () => {
     await injector.init();
     await flushAll();
     expect(document.querySelectorAll('.chapshuffle-item').length).toBe(5);
+    expect(document.querySelectorAll('.chapshuffle-drag-handle').length).toBe(5);
     injector.destroy();
   });
 
@@ -228,6 +251,34 @@ describe('UIInjector — queue content', () => {
     video.dispatchEvent(new Event('timeupdate'));
 
     expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('1');
+    randomSpy.mockRestore();
+    injector.destroy();
+  });
+
+  test('dragging a row before another row rearranges the queue', async () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    const beforeTitles = Array.from(document.querySelectorAll('.chapshuffle-title')).map(
+      (el) => el.textContent
+    );
+
+    dragItem(4, 1);
+
+    const titles = Array.from(document.querySelectorAll('.chapshuffle-title')).map(
+      (el) => el.textContent
+    );
+    expect(titles).toEqual([
+      beforeTitles[0],
+      beforeTitles[4],
+      beforeTitles[1],
+      beforeTitles[2],
+      beforeTitles[3],
+    ]);
     randomSpy.mockRestore();
     injector.destroy();
   });

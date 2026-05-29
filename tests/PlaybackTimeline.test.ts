@@ -47,6 +47,34 @@ describe('PlaybackTimeline — queue state', () => {
     expect(current).toEqual(timeline.queue[0]);
   });
 
+  test('moves a queue item and keeps the same current chapter active', () => {
+    const timeline = new PlaybackTimeline(CHAPTERS, identity);
+    timeline.seekToIndex(2);
+
+    expect(timeline.moveQueueItem(4, 1)).toBe(true);
+
+    expect(timeline.queue.map((chapter) => chapter.title)).toEqual([
+      'Intro',
+      'Outro',
+      'Act 1',
+      'Act 2',
+      'Act 3',
+    ]);
+    expect(timeline.currentChapter).toEqual({ title: 'Act 2', startSeconds: 120 });
+    expect(timeline.currentIndex).toBe(3);
+  });
+
+  test('ignores queue moves with out-of-range indexes', () => {
+    const timeline = new PlaybackTimeline(CHAPTERS, identity);
+    const queue = timeline.queue;
+
+    expect(timeline.moveQueueItem(-1, 2)).toBe(false);
+    expect(timeline.moveQueueItem(1, 99)).toBe(false);
+
+    expect(timeline.queue).toEqual(queue);
+    expect(timeline.currentIndex).toBe(0);
+  });
+
   test('resumes at the queue index for the chapter containing current time', () => {
     const shuffleFn = (arr: Chapter[]) => [arr[1], arr[2], arr[3], arr[4], arr[0]];
     const timeline = new PlaybackTimeline(CHAPTERS, shuffleFn);

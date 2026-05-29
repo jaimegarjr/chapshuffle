@@ -15,6 +15,7 @@ function props(overrides: Partial<QueuePanelProps> = {}): QueuePanelProps {
     onReshuffle: () => {},
     onPrev: () => {},
     onNext: () => {},
+    onReorder: () => {},
     ...overrides,
   };
 }

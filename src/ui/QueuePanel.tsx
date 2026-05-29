@@ -11,6 +11,7 @@ export interface QueuePanelProps {
   onReshuffle: () => void;
   onPrev: () => void;
   onNext: () => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
 }
 
 function secondsToTimestamp(totalSeconds: number): string {
@@ -31,6 +32,7 @@ function QueuePanel({
   onReshuffle,
   onPrev,
   onNext,
+  onReorder,
 }: QueuePanelProps) {
   const atStart = currentIndex === 0;
   const atEnd = currentIndex === chapters.length - 1;
@@ -77,12 +79,51 @@ function QueuePanel({
         <div
           key={chapter.startSeconds}
           data-index={String(i)}
+          draggable
           class={`chapshuffle-item${i === currentIndex ? ' chapshuffle-active' : ''}`}
           onClick={(e: MouseEvent) => {
             e.stopPropagation();
             onSeek(i);
           }}
+          onDragStart={(e: DragEvent) => {
+            e.stopPropagation();
+            e.dataTransfer?.setData('text/plain', String(i));
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+          }}
+          onDragOver={(e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          }}
+          onDrop={(e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const fromIndex = Number(e.dataTransfer?.getData('text/plain'));
+            if (!Number.isInteger(fromIndex)) return;
+            onReorder(fromIndex, i);
+          }}
         >
+          <span class="chapshuffle-drag-handle" title="Drag to reorder" aria-hidden="true">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-grip-vertical-icon lucide-grip-vertical"
+            >
+              <circle cx="9" cy="12" r="1" />
+              <circle cx="9" cy="5" r="1" />
+              <circle cx="9" cy="19" r="1" />
+              <circle cx="15" cy="12" r="1" />
+              <circle cx="15" cy="5" r="1" />
+              <circle cx="15" cy="19" r="1" />
+            </svg>
+          </span>
           <span class="chapshuffle-title">{chapter.title}</span>
           <span class="chapshuffle-time">{secondsToTimestamp(chapter.startSeconds)}</span>
         </div>

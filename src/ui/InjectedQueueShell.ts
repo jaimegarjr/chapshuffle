@@ -119,17 +119,38 @@ const CSS = `
     align-items: center;
     justify-content: space-between;
     min-height: var(--chapshuffle-row-height);
-    padding: 8px 14px;
-    cursor: pointer;
-    gap: 10px;
+    padding: 8px 14px 8px 10px;
+    cursor: grab;
+    gap: 8px;
     border-left: 3px solid transparent;
-    transition: background 0.1s;
+    transition: background 0.1s, border-left-color 0.1s;
   }
   .chapshuffle-item:hover { background: rgba(255,255,255,0.08); }
+  .chapshuffle-item:active { cursor: grabbing; }
   .chapshuffle-item.chapshuffle-active {
     border-left-color: #f00;
     background: rgba(255, 0, 0, 0.12);
     font-weight: 600;
+  }
+  .chapshuffle-drag-handle {
+    width: 16px;
+    flex: 0 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.38);
+    cursor: grab;
+    transform: translateX(-1px);
+    transition: color 0.1s, opacity 0.1s;
+    user-select: none;
+  }
+  .chapshuffle-drag-handle svg {
+    display: block;
+    pointer-events: none;
+  }
+  .chapshuffle-item:hover .chapshuffle-drag-handle,
+  .chapshuffle-item.chapshuffle-active .chapshuffle-drag-handle {
+    color: rgba(255,255,255,0.72);
   }
   .chapshuffle-title {
     flex: 1;

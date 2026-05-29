@@ -142,10 +142,7 @@ export class PlaybackController {
     const chapter = this._timeline.currentChapter;
     if (!isFinite(duration) || !chapter) return endSeconds;
 
-    return Math.max(
-      chapter.startSeconds,
-      duration - FINAL_VIDEO_CHAPTER_ADVANCE_BUFFER_SECONDS
-    );
+    return Math.max(chapter.startSeconds, duration - FINAL_VIDEO_CHAPTER_ADVANCE_BUFFER_SECONDS);
   }
 
   seekToChapter(index: number): void {

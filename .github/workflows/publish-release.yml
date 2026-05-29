@@ -1,0 +1,107 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version to publish, without the leading v
+        required: true
+        type: string
+      upload_to_chrome_web_store:
+        description: Upload the zip to Chrome Web Store without submitting it for review
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Verify release version
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "error: version must look like X.Y.Z"
+            exit 1
+          fi
+
+          MANIFEST_VERSION=$(node -p "require('./manifest.json').version")
+          if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+            echo "error: manifest.json version ($MANIFEST_VERSION) does not match requested version ($VERSION)"
+            exit 1
+          fi
+
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "error: tag v$VERSION already exists"
+            exit 1
+          fi
+
+      - name: Build & package
+        run: just zip
+
+      - name: Create release tag
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ inputs.version }}"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          files: chapshuffle-*.zip
+          generate_release_notes: true
+
+      - name: Authenticate to Google Cloud
+        if: ${{ inputs.upload_to_chrome_web_store }}
+        id: google-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+
+      - name: Upload to Chrome Web Store
+        if: ${{ inputs.upload_to_chrome_web_store }}
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+        run: |
+          set -euo pipefail
+
+          ZIP_FILE=$(find . -maxdepth 1 -name 'chapshuffle-*.zip' -print -quit)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "error: release zip not found"
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -X POST \
+            -T "$ZIP_FILE" \
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID:upload"

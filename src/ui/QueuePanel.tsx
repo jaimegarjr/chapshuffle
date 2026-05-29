@@ -104,7 +104,25 @@ function QueuePanel({
           }}
         >
           <span class="chapshuffle-drag-handle" title="Drag to reorder" aria-hidden="true">
-            ⋮⋮
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-grip-vertical-icon lucide-grip-vertical"
+            >
+              <circle cx="9" cy="12" r="1" />
+              <circle cx="9" cy="5" r="1" />
+              <circle cx="9" cy="19" r="1" />
+              <circle cx="15" cy="12" r="1" />
+              <circle cx="15" cy="5" r="1" />
+              <circle cx="15" cy="19" r="1" />
+            </svg>
           </span>
           <span class="chapshuffle-title">{chapter.title}</span>
           <span class="chapshuffle-time">{secondsToTimestamp(chapter.startSeconds)}</span>

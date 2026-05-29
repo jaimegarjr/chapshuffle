@@ -133,18 +133,20 @@ const CSS = `
     font-weight: 600;
   }
   .chapshuffle-drag-handle {
-    width: 14px;
-    flex: 0 0 14px;
+    width: 16px;
+    flex: 0 0 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: rgba(255,255,255,0.38);
     cursor: grab;
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.22em;
-    text-align: center;
     transform: translateX(-1px);
     transition: color 0.1s, opacity 0.1s;
     user-select: none;
+  }
+  .chapshuffle-drag-handle svg {
+    display: block;
+    pointer-events: none;
   }
   .chapshuffle-item:hover .chapshuffle-drag-handle,
   .chapshuffle-item.chapshuffle-active .chapshuffle-drag-handle {

@@ -157,3 +157,53 @@ describe('TutorialManager — panel opening', () => {
     expect(queue.style.display).toBe('block');
   });
 });
+
+describe('TutorialManager — anchor click auto-advance', () => {
+  test('clicking #chapshuffle-btn on step 0 auto-advances to step 1', () => {
+    const doc = setupDoc();
+    addTutorialTargets(doc);
+    const tm = new TutorialManager(doc, () => {});
+    tm.start();
+    expect(tm.currentStep).toBe(0);
+    (doc.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+    expect(tm.currentStep).toBe(1);
+    tm.destroy();
+  });
+
+  test('clicking Next → on step 0 removes anchor listener so button click no longer advances', () => {
+    const doc = setupDoc();
+    addTutorialTargets(doc);
+    const tm = new TutorialManager(doc, () => {});
+    tm.start();
+    (doc.getElementById('chapshuffle-tutorial-next') as HTMLButtonElement).click();
+    expect(tm.currentStep).toBe(1);
+    // Button click should not advance past step 1 now
+    (doc.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
+    expect(tm.currentStep).toBe(1);
+    tm.destroy();
+  });
+});
+
+describe('TutorialManager — pointer arrows', () => {
+  test('overlay contains an arrow element when target exists', () => {
+    const doc = setupDoc();
+    addTutorialTargets(doc);
+    const tm = new TutorialManager(doc, () => {});
+    tm.start();
+    const arrow = doc.querySelector('.chapshuffle-tutorial-arrow') as HTMLElement;
+    expect(arrow).not.toBeNull();
+    expect(arrow.dataset.dir).toBeDefined();
+    tm.destroy();
+  });
+
+  test('arrow is hidden when target element is not in DOM', () => {
+    const doc = setupDoc();
+    // No tutorial targets added — step 0's #chapshuffle-btn won't resolve
+    const tm = new TutorialManager(doc, () => {});
+    tm.start();
+    const arrow = doc.querySelector('.chapshuffle-tutorial-arrow') as HTMLElement;
+    expect(arrow).not.toBeNull();
+    expect(arrow.style.display).toBe('none');
+    tm.destroy();
+  });
+});

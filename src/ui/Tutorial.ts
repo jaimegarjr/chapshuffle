@@ -224,10 +224,7 @@ export class TutorialManager {
     const rect = target.getBoundingClientRect();
     const left = Math.max(
       MARGIN,
-      Math.min(
-        Math.round(rect.left + rect.width / 2 - POPUP_WIDTH / 2),
-        vpW - POPUP_WIDTH - MARGIN
-      )
+      Math.min(Math.round(rect.left + rect.width / 2 - POPUP_WIDTH / 2), vpW - POPUP_WIDTH - MARGIN)
     );
 
     let top: number;

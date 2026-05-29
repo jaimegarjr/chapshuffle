@@ -62,6 +62,27 @@ describe('PlaybackController — auto-advance', () => {
     expect(ctrl.currentIndex).toBe(4);
     ctrl.destroy();
   });
+
+  test('advances from the final video chapter before YouTube ends the video', () => {
+    const outroInMiddle = (arr: Chapter[]) => [arr[0], arr[4], arr[1], arr[2], arr[3]];
+    const video = buildMockVideo(0, 300);
+    const ctrl = new PlaybackController(
+      video as unknown as HTMLVideoElement,
+      CHAPTERS,
+      outroInMiddle
+    );
+
+    ctrl.seekToChapter(1);
+    video.tick(240);
+
+    video.tick(298.9);
+    expect(ctrl.currentIndex).toBe(1);
+
+    video.tick(299);
+    expect(ctrl.currentIndex).toBe(2);
+    expect(video.currentTime).toBe(60);
+    ctrl.destroy();
+  });
 });
 
 describe('PlaybackController — seekToChapter()', () => {

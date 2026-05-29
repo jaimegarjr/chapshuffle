@@ -4,6 +4,7 @@ import { PlaybackTimeline, type ShuffleFn } from './PlaybackTimeline';
 import { createDebugLogger } from '../debug/DebugLogger';
 
 const debug = createDebugLogger('playback');
+const FINAL_VIDEO_CHAPTER_ADVANCE_BUFFER_SECONDS = 1;
 
 export class PlaybackController {
   private readonly _video: HTMLVideoElement;
@@ -109,7 +110,7 @@ export class PlaybackController {
 
     if (!this._autoAdvance) return;
 
-    const endSeconds = this._timeline.currentEndSeconds();
+    const endSeconds = this._currentQueueBoundarySeconds();
     if (currentTime >= endSeconds) {
       if (this._timeline.isLastChapter) {
         debug.log(`queue end - behavior=${this._queueEndBehavior}`);
@@ -131,6 +132,17 @@ export class PlaybackController {
         this._seek(nextIndex);
       }
     }
+  }
+
+  private _currentQueueBoundarySeconds(): number {
+    const endSeconds = this._timeline.currentEndSeconds();
+    if (isFinite(endSeconds) || this._timeline.isLastChapter) return endSeconds;
+
+    const duration = this._video.duration;
+    const chapter = this._timeline.currentChapter;
+    if (!isFinite(duration) || !chapter) return endSeconds;
+
+    return Math.max(chapter.startSeconds, duration - FINAL_VIDEO_CHAPTER_ADVANCE_BUFFER_SECONDS);
   }
 
   seekToChapter(index: number): void {

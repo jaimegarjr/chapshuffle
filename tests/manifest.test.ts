@@ -8,9 +8,11 @@ describe('manifest.json', () => {
     expect(manifest.manifest_version).toBe(3);
   });
 
-  test('declares only activeTab and storage permissions', () => {
-    expect(manifest.permissions).toEqual(expect.arrayContaining(['activeTab', 'storage']));
-    expect(manifest.permissions.length).toBe(2);
+  test('declares activeTab, storage, and tabs permissions', () => {
+    expect(manifest.permissions).toEqual(
+      expect.arrayContaining(['activeTab', 'storage', 'tabs'])
+    );
+    expect(manifest.permissions.length).toBe(3);
   });
 
   test('host permission is scoped to youtube.com', () => {

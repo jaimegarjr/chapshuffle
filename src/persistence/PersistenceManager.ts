@@ -117,3 +117,23 @@ export function setQueueEndBehavior(value: QueueEndBehavior): Promise<void> {
 export function setShuffleEnabled(value: boolean): Promise<void> {
   return writeSettings({ [SETTINGS_KEYS.shuffleEnabled]: Boolean(value) });
 }
+
+export const TUTORIAL_COMPLETE_KEY = 'tutorialComplete';
+
+export async function getTutorialComplete(): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.sync.get([TUTORIAL_COMPLETE_KEY], (result) => {
+      if (chrome.runtime.lastError) return reject(storageError());
+      resolve(result[TUTORIAL_COMPLETE_KEY] === true);
+    });
+  });
+}
+
+export function setTutorialComplete(value: boolean): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.sync.set({ [TUTORIAL_COMPLETE_KEY]: Boolean(value) }, () => {
+      if (chrome.runtime.lastError) return reject(storageError());
+      resolve();
+    });
+  });
+}

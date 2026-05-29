@@ -1,7 +1,11 @@
-import { getShuffleEnabled, settingsChangeFromChrome } from './persistence/PersistenceManager';
+import {
+  getShuffleEnabled,
+  setShuffleEnabled,
+  settingsChangeFromChrome,
+} from './persistence/PersistenceManager';
 
 function applyBadge(enabled: boolean): void {
-  chrome.action.setBadgeText({ text: enabled ? 'ON' : '' });
+  chrome.action.setBadgeText({ text: enabled ? 'ON' : 'OFF' });
   chrome.action.setBadgeBackgroundColor({ color: enabled ? '#cc0000' : '#888888' });
 }
 
@@ -11,6 +15,13 @@ function applyLiveBadge(): void {
 }
 
 getShuffleEnabled().then(applyBadge);
+
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') {
+    setShuffleEnabled(true).then(() => applyBadge(true));
+    chrome.tabs.create({ url: 'https://jaimegarjr.github.io/chapshuffle/' });
+  }
+});
 
 chrome.storage.onChanged.addListener((changes) => {
   const settingsChange = settingsChangeFromChrome(changes);

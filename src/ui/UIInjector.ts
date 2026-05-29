@@ -4,10 +4,13 @@ import { PlaybackController } from '../playback/PlaybackController';
 import {
   DEFAULT_SETTINGS,
   getSettings,
+  getTutorialComplete,
+  setTutorialComplete,
   settingsChangeFromChrome,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
+import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
 
 const VIDEO_SEL = 'video';
@@ -21,6 +24,7 @@ export class UIInjector {
   private _autoAdvance = DEFAULT_SETTINGS.shuffleEnabled;
   private _minChapters = DEFAULT_SETTINGS.minChapters;
   private _queueEndBehavior: QueueEndBehavior = DEFAULT_SETTINGS.queueEndBehavior;
+  private _tutorial: TutorialManager | null = null;
   private readonly _boundHighlightUpdate: () => void;
   private readonly _boundStorageChange: (changes: {
     [key: string]: chrome.storage.StorageChange;
@@ -59,6 +63,7 @@ export class UIInjector {
     if (shuffleEnabled !== undefined) {
       this._autoAdvance = shuffleEnabled;
       if (this._controller) this._controller.autoAdvance = this._autoAdvance;
+      this._shell.updateShuffleState(this._autoAdvance);
     }
     if (queueEndBehavior !== undefined) {
       this._queueEndBehavior = queueEndBehavior;
@@ -87,7 +92,28 @@ export class UIInjector {
     }
 
     this._shell.mount(controlsBar);
+    this._shell.updateShuffleState(this._autoAdvance);
     this._renderPanel();
+    this._initTutorialIfNeeded();
+  }
+
+  private _initTutorialIfNeeded(): void {
+    getTutorialComplete()
+      .then((complete) => {
+        if (!complete && this._shell.isMounted) {
+          this._tutorial = new TutorialManager(
+            this._doc,
+            () => {
+              setTutorialComplete(true);
+            },
+            () => {
+              this._shell.openPanel();
+            }
+          );
+          this._tutorial.start();
+        }
+      })
+      .catch(() => {});
   }
 
   private _renderPanel(): void {
@@ -139,6 +165,8 @@ export class UIInjector {
     try {
       chrome.runtime.sendMessage({ type: 'livestream-left' });
     } catch {}
+    this._tutorial?.destroy();
+    this._tutorial = null;
     this._controller?.destroy();
     this._controller = null;
     this._video?.removeEventListener('timeupdate', this._boundHighlightUpdate);
@@ -151,6 +179,8 @@ export class UIInjector {
     this._watcher?.destroy();
     this._watcher = null;
     chrome.storage.onChanged.removeListener(this._boundStorageChange);
+    this._tutorial?.destroy();
+    this._tutorial = null;
     this._resetInjectedState();
   }
 }

@@ -5,7 +5,8 @@
   "description": "Shuffle YouTube video chapters for a randomized viewing experience.",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "https://www.youtube.com/*"

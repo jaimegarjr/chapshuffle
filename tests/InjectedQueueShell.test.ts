@@ -112,6 +112,48 @@ describe('InjectedQueueShell', () => {
     expect(panel.style.right).toBe('auto');
   });
 
+  test('openPanel() positions and shows the panel, calling onOpen', () => {
+    const controls = addPlayerControls(document);
+    const video = addVideoElement(document);
+    video.getBoundingClientRect = jest.fn(
+      () =>
+        ({
+          x: 100,
+          y: 50,
+          top: 50,
+          right: 900,
+          bottom: 550,
+          left: 100,
+          width: 800,
+          height: 500,
+          toJSON: () => ({}),
+        }) as DOMRect
+    );
+    const onOpen = jest.fn();
+    const shell = new InjectedQueueShell(document, onOpen);
+    shell.mount(controls);
+    shell.render(props());
+
+    shell.openPanel();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLElement;
+    expect(panel.style.display).toBe('block');
+    expect(document.getElementById('chapshuffle-btn')!.getAttribute('aria-expanded')).toBe('true');
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  test('openPanel() is a no-op when the panel is already open', () => {
+    const controls = addPlayerControls(document);
+    addVideoElement(document);
+    const onOpen = jest.fn();
+    const shell = new InjectedQueueShell(document, onOpen);
+    shell.mount(controls);
+    shell.render(props());
+    shell.openPanel(); // first call opens it
+    shell.openPanel(); // second call should be a no-op
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
   test('unmount removes injected controls and panel', () => {
     const controls = addPlayerControls(document);
     const shell = new InjectedQueueShell(document, () => {});
@@ -122,5 +164,30 @@ describe('InjectedQueueShell', () => {
 
     expect(document.getElementById('chapshuffle-btn')).toBeNull();
     expect(document.getElementById('chapshuffle-queue')).toBeNull();
+  });
+
+  test('updateShuffleState(false) adds data-shuffle-off="true" attribute to button', () => {
+    const controls = addPlayerControls(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+
+    shell.updateShuffleState(false);
+
+    const btn = document.getElementById('chapshuffle-btn');
+    expect(btn).not.toBeNull();
+    expect(btn!.getAttribute('data-shuffle-off')).toBe('true');
+  });
+
+  test('updateShuffleState(true) removes data-shuffle-off attribute', () => {
+    const controls = addPlayerControls(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+
+    shell.updateShuffleState(false);
+    shell.updateShuffleState(true);
+
+    const btn = document.getElementById('chapshuffle-btn');
+    expect(btn).not.toBeNull();
+    expect(btn!.hasAttribute('data-shuffle-off')).toBe(false);
   });
 });

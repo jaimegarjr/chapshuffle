@@ -20,9 +20,27 @@ const CSS = `
     vertical-align: middle;
     display: inline-flex;
     align-items: center;
+    position: relative;
   }
   #chapshuffle-btn:hover { opacity: 1; }
   #chapshuffle-btn[aria-expanded="true"] { opacity: 1; color: #f00; }
+  .chapshuffle-shuffle-badge {
+    display: none;
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.55);
+    line-height: 1;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #chapshuffle-btn[data-shuffle-off="true"] .chapshuffle-shuffle-badge {
+    display: block;
+  }
 
   #chapshuffle-queue {
     --chapshuffle-header-height: 44px;
@@ -207,6 +225,27 @@ export class InjectedQueueShell {
     }
   }
 
+  updateShuffleState(enabled: boolean): void {
+    const btn = this._doc.getElementById(BTN_ID);
+    if (!btn) return;
+    if (enabled) {
+      btn.removeAttribute('data-shuffle-off');
+    } else {
+      btn.setAttribute('data-shuffle-off', 'true');
+    }
+  }
+
+  openPanel(): void {
+    const panel = this._doc.getElementById(PANEL_ID);
+    const btn = this._doc.getElementById(BTN_ID);
+    if (!panel || panel.style.display === 'block') return;
+    this._positionPanelOverVideo(panel);
+    this._onOpen();
+    panel.style.display = 'block';
+    btn?.setAttribute('aria-expanded', 'true');
+    if (btn) btn.title = 'chapshuffle: close queue';
+  }
+
   unmount(): void {
     if (this._panelMount) {
       unmountQueuePanel(this._panelMount);
@@ -228,6 +267,10 @@ export class InjectedQueueShell {
       `<path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/>` +
       `<path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/>` +
       `</svg>`;
+    const badge = this._doc.createElement('span');
+    badge.className = 'chapshuffle-shuffle-badge';
+    badge.textContent = 'OFF';
+    btn.appendChild(badge);
     btn.title = 'chapshuffle: open queue';
     btn.setAttribute('aria-expanded', 'false');
     btn.addEventListener('click', (e) => {

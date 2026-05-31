@@ -8,6 +8,7 @@ const PANEL_WIDTH_PX = 300;
 const PANEL_MARGIN_PX = 24;
 const PLAYER_CONTROLS_CLEARANCE_PX = 72;
 const VIEWPORT_MARGIN_PX = 16;
+const PANEL_FADE_MS = 160;
 
 const CSS = `
   #chapshuffle-btn {
@@ -63,10 +64,16 @@ const CSS = `
     font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
     font-size: 13px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.65);
+    opacity: 1;
+    transition: opacity ${PANEL_FADE_MS}ms ease;
   }
   #chapshuffle-queue,
   #chapshuffle-queue * {
     box-sizing: border-box;
+  }
+  #chapshuffle-queue.chapshuffle-fading-out {
+    opacity: 0;
+    pointer-events: none;
   }
 
   #chapshuffle-progress {
@@ -188,6 +195,9 @@ export class InjectedQueueShell {
   private readonly _doc: Document;
   private readonly _onOpen: () => void;
   private _panelMount: HTMLDivElement | null = null;
+  private _controlsObserver: MutationObserver | null = null;
+  private _hideTimer: ReturnType<typeof setTimeout> | null = null;
+  private _panelWantedOpen = false;
   private _hasRendered = false;
 
   constructor(doc: Document, onOpen: () => void) {
@@ -212,6 +222,7 @@ export class InjectedQueueShell {
     this._panelMount = this._doc.createElement('div');
     this._doc.body.appendChild(this._panelMount);
     controlsBar.prepend(this._buildToggleButton());
+    this._observePlayerControls(controlsBar);
   }
 
   render(props: QueuePanelProps): void {
@@ -239,6 +250,9 @@ export class InjectedQueueShell {
     const panel = this._doc.getElementById(PANEL_ID);
     const btn = this._doc.getElementById(BTN_ID);
     if (!panel || panel.style.display === 'block') return;
+    this._clearHideTimer();
+    panel.classList.remove('chapshuffle-fading-out');
+    this._panelWantedOpen = true;
     this._positionPanelOverVideo(panel);
     this._onOpen();
     panel.style.display = 'block';
@@ -247,12 +261,16 @@ export class InjectedQueueShell {
   }
 
   unmount(): void {
+    this._controlsObserver?.disconnect();
+    this._controlsObserver = null;
+    this._clearHideTimer();
     if (this._panelMount) {
       unmountQueuePanel(this._panelMount);
       this._panelMount.remove();
       this._panelMount = null;
     }
     this._hasRendered = false;
+    this._panelWantedOpen = false;
     this._doc.getElementById(BTN_ID)?.remove();
   }
 
@@ -288,12 +306,78 @@ export class InjectedQueueShell {
 
     const opening = panel.style.display === 'none';
     if (opening) {
+      this._clearHideTimer();
+      panel.classList.remove('chapshuffle-fading-out');
+      this._panelWantedOpen = true;
       this._positionPanelOverVideo(panel);
       this._onOpen();
+      panel.style.display = 'block';
+      btn?.setAttribute('aria-expanded', 'true');
+      if (btn) btn.title = 'chapshuffle: close queue';
+      return;
     }
-    panel.style.display = opening ? 'block' : 'none';
-    btn?.setAttribute('aria-expanded', String(opening));
-    if (btn) btn.title = opening ? 'chapshuffle: close queue' : 'chapshuffle: open queue';
+    this._hidePanel(false);
+  }
+
+  private _observePlayerControls(controlsBar: Element): void {
+    this._controlsObserver?.disconnect();
+    const player = controlsBar.closest('.html5-video-player') ?? controlsBar.parentElement;
+    if (!player) return;
+
+    this._controlsObserver = new MutationObserver(() => {
+      if (player.classList.contains('ytp-autohide')) {
+        this._hidePanel(true);
+      } else if (this._panelWantedOpen) {
+        this._showPanel();
+      }
+    });
+    this._controlsObserver.observe(player, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  private _hidePanel(fade: boolean): void {
+    const panel = this._doc.getElementById(PANEL_ID);
+    const btn = this._doc.getElementById(BTN_ID);
+    if (!panel || panel.style.display !== 'block') return;
+
+    this._clearHideTimer();
+    if (!fade) this._panelWantedOpen = false;
+    btn?.setAttribute('aria-expanded', 'false');
+    if (btn) btn.title = 'chapshuffle: open queue';
+
+    if (!fade) {
+      panel.classList.remove('chapshuffle-fading-out');
+      panel.style.display = 'none';
+      return;
+    }
+
+    panel.classList.add('chapshuffle-fading-out');
+    this._hideTimer = setTimeout(() => {
+      const currentPanel = this._doc.getElementById(PANEL_ID);
+      if (!currentPanel) return;
+      currentPanel.style.display = 'none';
+      currentPanel.classList.remove('chapshuffle-fading-out');
+      this._hideTimer = null;
+    }, PANEL_FADE_MS);
+  }
+
+  private _showPanel(): void {
+    const panel = this._doc.getElementById(PANEL_ID);
+    const btn = this._doc.getElementById(BTN_ID);
+    if (!panel) return;
+
+    this._clearHideTimer();
+    panel.classList.remove('chapshuffle-fading-out');
+    this._positionPanelOverVideo(panel);
+    this._onOpen();
+    panel.style.display = 'block';
+    btn?.setAttribute('aria-expanded', 'true');
+    if (btn) btn.title = 'chapshuffle: close queue';
+  }
+
+  private _clearHideTimer(): void {
+    if (this._hideTimer === null) return;
+    clearTimeout(this._hideTimer);
+    this._hideTimer = null;
   }
 
   private _positionPanelOverVideo(panel: HTMLElement): void {

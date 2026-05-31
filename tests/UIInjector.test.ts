@@ -374,7 +374,7 @@ describe('UIInjector — navigation (stale queue regression)', () => {
     injector.destroy();
   });
 
-  test('mid-video resume starts at the correct chapter, not index 0', async () => {
+  test('mid-video resume makes the current chapter the first queue item', async () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);
     addPlayerControls(document);
     addChapterItems(document, 5);
@@ -387,10 +387,13 @@ describe('UIInjector — navigation (stale queue regression)', () => {
 
     (document.getElementById('chapshuffle-btn') as HTMLButtonElement).click();
 
-    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('2');
+    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('0');
+    expect(document.querySelector('.chapshuffle-active .chapshuffle-title')?.textContent).toBe(
+      'Chapter 4'
+    );
 
     video.dispatchEvent(new Event('timeupdate'));
-    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('2');
+    expect(document.querySelector('.chapshuffle-active')?.getAttribute('data-index')).toBe('0');
 
     jest.mocked(Math.random).mockRestore();
     injector.destroy();

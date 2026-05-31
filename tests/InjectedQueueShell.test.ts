@@ -27,6 +27,16 @@ function addPlayerControls(doc: Document): Element {
   return el;
 }
 
+function addPlayerWithControls(doc: Document): { player: Element; controls: Element } {
+  const player = doc.createElement('div');
+  player.className = 'html5-video-player';
+  const controls = doc.createElement('div');
+  controls.className = 'ytp-right-controls';
+  player.appendChild(controls);
+  doc.body.appendChild(player);
+  return { player, controls };
+}
+
 function addVideoElement(doc: Document): HTMLVideoElement {
   const video = doc.createElement('video');
   doc.body.appendChild(video);
@@ -80,6 +90,78 @@ describe('InjectedQueueShell', () => {
     expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('none');
     expect(btn.getAttribute('aria-expanded')).toBe('false');
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  test('fades out the panel when YouTube auto-hides player controls', async () => {
+    jest.useFakeTimers();
+    const { player, controls } = addPlayerWithControls(document);
+    addVideoElement(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+    shell.render(props());
+
+    const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
+    btn.click();
+    player.classList.add('ytp-autohide');
+    await Promise.resolve();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
+    expect(panel.classList.contains('chapshuffle-fading-out')).toBe(true);
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+
+    jest.runOnlyPendingTimers();
+
+    expect(panel.style.display).toBe('none');
+    expect(panel.classList.contains('chapshuffle-fading-out')).toBe(false);
+    jest.useRealTimers();
+  });
+
+  test('restores an auto-hidden panel when YouTube shows player controls again', async () => {
+    jest.useFakeTimers();
+    const { player, controls } = addPlayerWithControls(document);
+    addVideoElement(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+    shell.render(props());
+
+    const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
+    btn.click();
+    player.classList.add('ytp-autohide');
+    await Promise.resolve();
+    jest.runOnlyPendingTimers();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
+    expect(panel.style.display).toBe('none');
+
+    player.classList.remove('ytp-autohide');
+    await Promise.resolve();
+
+    expect(panel.style.display).toBe('block');
+    expect(panel.classList.contains('chapshuffle-fading-out')).toBe(false);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    jest.useRealTimers();
+  });
+
+  test('does not restore the panel after the user closes it manually', async () => {
+    jest.useFakeTimers();
+    const { player, controls } = addPlayerWithControls(document);
+    addVideoElement(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+    shell.render(props());
+
+    const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
+    btn.click();
+    btn.click();
+
+    player.classList.add('ytp-autohide');
+    await Promise.resolve();
+    player.classList.remove('ytp-autohide');
+    await Promise.resolve();
+
+    expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('none');
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    jest.useRealTimers();
   });
 
   test('positions the panel over the video when opened', () => {

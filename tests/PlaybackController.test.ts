@@ -42,6 +42,22 @@ function buildMockVideo(initialTime = 0, duration = 300): MockVideo {
 }
 
 describe('PlaybackController — auto-advance', () => {
+  test('starts the initial queue from the chapter currently playing', () => {
+    const video = buildMockVideo(210);
+    const shuffleFn = (arr: Chapter[]) => [arr[1], arr[2], arr[3], arr[4], arr[0]];
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, shuffleFn);
+
+    expect(ctrl.currentIndex).toBe(0);
+    expect(ctrl.queue).toEqual([
+      { title: 'Act 3', startSeconds: 180 },
+      { title: 'Outro', startSeconds: 240 },
+      { title: 'Intro', startSeconds: 0 },
+      { title: 'Act 1', startSeconds: 60 },
+      { title: 'Act 2', startSeconds: 120 },
+    ]);
+    ctrl.destroy();
+  });
+
   test('advances to next chapter when boundary is crossed', () => {
     const video = buildMockVideo(0);
     const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);

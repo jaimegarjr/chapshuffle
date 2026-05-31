@@ -75,14 +75,21 @@ describe('PlaybackTimeline — queue state', () => {
     expect(timeline.currentIndex).toBe(0);
   });
 
-  test('resumes at the queue index for the chapter containing current time', () => {
+  test('resumes with the current video chapter first in the queue', () => {
     const shuffleFn = (arr: Chapter[]) => [arr[1], arr[2], arr[3], arr[4], arr[0]];
     const timeline = new PlaybackTimeline(CHAPTERS, shuffleFn);
 
     const resumed = timeline.resumeAt(210);
 
     expect(resumed).toEqual({ title: 'Act 3', startSeconds: 180 });
-    expect(timeline.currentIndex).toBe(2);
+    expect(timeline.currentIndex).toBe(0);
+    expect(timeline.queue).toEqual([
+      { title: 'Act 3', startSeconds: 180 },
+      { title: 'Outro', startSeconds: 240 },
+      { title: 'Intro', startSeconds: 0 },
+      { title: 'Act 1', startSeconds: 60 },
+      { title: 'Act 2', startSeconds: 120 },
+    ]);
   });
 });
 

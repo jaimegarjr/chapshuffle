@@ -79,7 +79,10 @@ export class PlaybackTimeline {
     const queueIndex = this._queue.findIndex(
       (chapter) => chapter.startSeconds === resumeChapter.startSeconds
     );
-    if (queueIndex >= 0) this._currentIndex = queueIndex;
+    if (queueIndex >= 0) {
+      this._queue = [...this._queue.slice(queueIndex), ...this._queue.slice(0, queueIndex)];
+      this._currentIndex = 0;
+    }
     return resumeChapter;
   }
 

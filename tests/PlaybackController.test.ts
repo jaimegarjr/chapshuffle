@@ -320,6 +320,77 @@ describe('PlaybackController — queue end behavior', () => {
   });
 });
 
+describe('PlaybackController — loop mode', () => {
+  test('loopMode defaults to false', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    expect(ctrl.loopMode).toBe(false);
+    ctrl.destroy();
+  });
+
+  test('loopMode setter toggles: false → true → false', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.loopMode = true;
+    expect(ctrl.loopMode).toBe(true);
+    ctrl.loopMode = false;
+    expect(ctrl.loopMode).toBe(false);
+    ctrl.destroy();
+  });
+
+  test('when loop mode is on, chapter end seeks back to start of current chapter instead of advancing', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.seekToChapter(1);
+    video.tick(60);
+
+    ctrl.loopMode = true;
+    video.tick(120);
+
+    expect(ctrl.currentIndex).toBe(1);
+    expect(video.currentTime).toBe(60);
+  });
+
+  test('when loop mode is on, auto-advance does not fire', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.loopMode = true;
+
+    video.tick(59);
+    expect(ctrl.currentIndex).toBe(0);
+    video.tick(60);
+    expect(ctrl.currentIndex).toBe(0);
+    expect(video.currentTime).toBe(0);
+    ctrl.destroy();
+  });
+
+  test('when loop mode is off, auto-advance resumes normally', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.loopMode = true;
+
+    // loop fires, seeks currentTime back to 0
+    video.tick(60);
+    expect(ctrl.currentIndex).toBe(0);
+    // settle the seek so _seekTarget is cleared
+    video.tick(0);
+
+    ctrl.loopMode = false;
+    video.tick(60);
+    expect(ctrl.currentIndex).toBe(1);
+    expect(video.currentTime).toBe(60);
+    ctrl.destroy();
+  });
+
+  test('loop mode is independent of Chrome storage — setting it does not affect chrome.storage', () => {
+    const video = buildMockVideo(0);
+    const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);
+    ctrl.loopMode = true;
+    expect(ctrl.loopMode).toBe(true);
+    ctrl.destroy();
+  });
+});
+
 describe('PlaybackController — isolation', () => {
   test('two controllers for different videos do not share state', () => {
     const v1 = buildMockVideo(0);

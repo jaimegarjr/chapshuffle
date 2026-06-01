@@ -24,6 +24,7 @@ export class UIInjector {
   private _autoAdvance = DEFAULT_SETTINGS.shuffleEnabled;
   private _minChapters = DEFAULT_SETTINGS.minChapters;
   private _queueEndBehavior: QueueEndBehavior = DEFAULT_SETTINGS.queueEndBehavior;
+  private _loopMode = false;
   private _tutorial: TutorialManager | null = null;
   private readonly _boundHighlightUpdate: () => void;
   private readonly _boundStorageChange: (changes: {
@@ -123,6 +124,7 @@ export class UIInjector {
       chapters: controller.queue,
       currentIndex: controller.currentIndex,
       progress: controller.chapterProgress,
+      loopMode: this._loopMode,
       onSeek: (i: number) => {
         controller.seekToChapter(i);
         this._renderPanel();
@@ -136,6 +138,11 @@ export class UIInjector {
         this._renderPanel();
       },
       onReshuffle: () => this._onReshuffle(),
+      onLoopToggle: () => {
+        this._loopMode = !this._loopMode;
+        controller.loopMode = this._loopMode;
+        this._renderPanel();
+      },
       onReorder: (fromIndex: number, toIndex: number) => {
         controller.reorderQueue(fromIndex, toIndex);
         this._renderPanel();
@@ -171,6 +178,7 @@ export class UIInjector {
     this._controller = null;
     this._video?.removeEventListener('timeupdate', this._boundHighlightUpdate);
     this._video = null;
+    this._loopMode = false;
 
     this._shell.unmount();
   }

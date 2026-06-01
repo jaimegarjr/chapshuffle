@@ -11,8 +11,10 @@ function props(overrides: Partial<QueuePanelProps> = {}): QueuePanelProps {
     chapters,
     currentIndex: 0,
     progress: 0,
+    loopMode: false,
     onSeek: () => {},
     onReshuffle: () => {},
+    onLoopToggle: () => {},
     onPrev: () => {},
     onNext: () => {},
     onReorder: () => {},
@@ -189,7 +191,7 @@ describe('InjectedQueueShell', () => {
 
     const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
     expect(panel.style.top).toBe('auto');
-    expect(panel.style.left).toBe('576px');
+    expect(panel.style.left).toBe('516px');
     expect(panel.style.bottom).toBe('290px');
     expect(panel.style.right).toBe('auto');
   });

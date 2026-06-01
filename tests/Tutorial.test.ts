@@ -29,6 +29,10 @@ function addTutorialTargets(doc: Document): void {
   reshuffle.id = 'chapshuffle-reshuffle';
   doc.body.appendChild(reshuffle);
 
+  const loop = doc.createElement('button');
+  loop.id = 'chapshuffle-loop';
+  doc.body.appendChild(loop);
+
   const item = doc.createElement('div');
   item.className = 'chapshuffle-item';
   const handle = doc.createElement('span');
@@ -75,19 +79,20 @@ describe('TutorialManager — lifecycle', () => {
     expect(tm.currentStep).toBe(1);
   });
 
-  test('next() on last step (5) calls onComplete and deactivates', () => {
+  test('next() on last step (6) calls onComplete and deactivates', () => {
     const doc = setupDoc();
     addTutorialTargets(doc);
     const onComplete = jest.fn();
     const tm = new TutorialManager(doc, onComplete);
     tm.start();
-    // advance to step 5
+    // advance to step 6
     tm.next(); // 1
     tm.next(); // 2
     tm.next(); // 3
     tm.next(); // 4
     tm.next(); // 5
-    expect(tm.currentStep).toBe(5);
+    tm.next(); // 6
+    expect(tm.currentStep).toBe(6);
     tm.next(); // past last step => complete
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(tm.isActive).toBe(false);

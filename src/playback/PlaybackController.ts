@@ -11,6 +11,7 @@ export class PlaybackController {
   private readonly _timeline: PlaybackTimeline;
   private _autoAdvance: boolean;
   private _queueEndBehavior: QueueEndBehavior;
+  private _loopMode = false;
   private readonly _bound: () => void;
   private _seekTarget: number | null = null;
   private _suppressCount = 0;
@@ -57,6 +58,15 @@ export class PlaybackController {
   set queueEndBehavior(value: QueueEndBehavior) {
     this._queueEndBehavior = value;
     debug.log(`queueEndBehavior set to ${value}`);
+  }
+
+  get loopMode(): boolean {
+    return this._loopMode;
+  }
+
+  set loopMode(value: boolean) {
+    this._loopMode = value;
+    debug.log(`loopMode set to ${value}`);
   }
 
   get queue(): Chapter[] {
@@ -108,29 +118,40 @@ export class PlaybackController {
       return;
     }
 
+    const endSeconds = this._currentQueueBoundarySeconds();
+    if (currentTime < endSeconds) return;
+
+    if (this._loopMode) {
+      const chapter = this._timeline.currentChapter;
+      if (chapter) {
+        debug.log(`loop - seeking back to start of "${chapter.title}" at ${chapter.startSeconds}s`);
+        this._seekTarget = chapter.startSeconds;
+        this._suppressCount = 0;
+        this._video.currentTime = chapter.startSeconds;
+      }
+      return;
+    }
+
     if (!this._autoAdvance) return;
 
-    const endSeconds = this._currentQueueBoundarySeconds();
-    if (currentTime >= endSeconds) {
-      if (this._timeline.isLastChapter) {
-        debug.log(`queue end - behavior=${this._queueEndBehavior}`);
-        if (this._queueEndBehavior === 'end-video') {
-          const duration = this._video.duration;
-          if (isFinite(duration)) this._video.currentTime = duration;
-        } else {
-          this.reshuffle();
-        }
+    if (this._timeline.isLastChapter) {
+      debug.log(`queue end - behavior=${this._queueEndBehavior}`);
+      if (this._queueEndBehavior === 'end-video') {
+        const duration = this._video.duration;
+        if (isFinite(duration)) this._video.currentTime = duration;
       } else {
-        const nextIndex = this._timeline.currentIndex + 1;
-        const chapter = this._timeline.currentChapter;
-        const nextChapter = this._timeline.queue[nextIndex];
-        debug.log(
-          `auto-advance - currentTime=${currentTime.toFixed(2)} >= end=${endSeconds}` +
-            ` "[${this._timeline.currentIndex}]${chapter?.title ?? '?'}" -> ` +
-            `"[${nextIndex}]${nextChapter?.title ?? '?'}"`
-        );
-        this._seek(nextIndex);
+        this.reshuffle();
       }
+    } else {
+      const nextIndex = this._timeline.currentIndex + 1;
+      const chapter = this._timeline.currentChapter;
+      const nextChapter = this._timeline.queue[nextIndex];
+      debug.log(
+        `auto-advance - currentTime=${currentTime.toFixed(2)} >= end=${endSeconds}` +
+          ` "[${this._timeline.currentIndex}]${chapter?.title ?? '?'}" -> ` +
+          `"[${nextIndex}]${nextChapter?.title ?? '?'}"`
+      );
+      this._seek(nextIndex);
     }
   }
 

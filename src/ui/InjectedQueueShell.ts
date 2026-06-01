@@ -4,7 +4,7 @@ const STYLES_ID = 'chapshuffle-styles';
 const PANEL_ID = 'chapshuffle-queue';
 const BTN_ID = 'chapshuffle-btn';
 const VIDEO_SEL = 'video';
-const PANEL_WIDTH_PX = 300;
+const PANEL_WIDTH_PX = 360;
 const PANEL_MARGIN_PX = 24;
 const PLAYER_CONTROLS_CLEARANCE_PX = 72;
 const VIEWPORT_MARGIN_PX = 16;
@@ -138,6 +138,21 @@ const CSS = `
     white-space: nowrap;
   }
   #chapshuffle-reshuffle:hover { background: rgba(255,255,255,0.16); }
+
+  #chapshuffle-loop {
+    background: none;
+    border: none;
+    color: #fff;
+    padding: 4px 6px;
+    cursor: pointer;
+    opacity: 0.7;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    transition: opacity 0.1s, background 0.1s;
+  }
+  #chapshuffle-loop:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+  #chapshuffle-loop[aria-pressed="true"] { opacity: 1; color: #f00; }
 
   .chapshuffle-item {
     display: flex;

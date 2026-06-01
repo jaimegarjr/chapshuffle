@@ -124,9 +124,7 @@ export class PlaybackController {
     if (this._loopMode) {
       const chapter = this._timeline.currentChapter;
       if (chapter) {
-        debug.log(
-          `loop - seeking back to start of "${chapter.title}" at ${chapter.startSeconds}s`
-        );
+        debug.log(`loop - seeking back to start of "${chapter.title}" at ${chapter.startSeconds}s`);
         this._seekTarget = chapter.startSeconds;
         this._suppressCount = 0;
         this._video.currentTime = chapter.startSeconds;

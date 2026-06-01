@@ -32,6 +32,11 @@ const STEPS: TutorialStep[] = [
     openPanelBefore: true,
   },
   {
+    targetSelector: '#chapshuffle-loop',
+    message: 'Hit Loop to repeat the current chapter on a loop until you turn it off.',
+    openPanelBefore: true,
+  },
+  {
     targetSelector: '.chapshuffle-drag-handle',
     message: 'Drag any chapter row to set your own custom play order.',
     openPanelBefore: true,

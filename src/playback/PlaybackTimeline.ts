@@ -8,6 +8,7 @@ export class PlaybackTimeline {
   private readonly _shuffleFn: ShuffleFn;
   private _queue: Chapter[];
   private _currentIndex = 0;
+  private _excluded: Set<number> = new Set();
 
   constructor(chapters: Chapter[], shuffleFn: ShuffleFn = defaultShuffle) {
     this._shuffleFn = shuffleFn;
@@ -37,8 +38,25 @@ export class PlaybackTimeline {
     return this._queue[index];
   }
 
+  setExcluded(excluded: Set<number>): void {
+    this._excluded = excluded;
+    this._queue = this._queue.filter(
+      (c, i) => i <= this._currentIndex || !excluded.has(c.startSeconds)
+    );
+  }
+
+  dropFromQueue(startSeconds: number): void {
+    this._queue = this._queue.filter(
+      (c, i) => i <= this._currentIndex || c.startSeconds !== startSeconds
+    );
+  }
+
   reshuffle(): Chapter | null {
-    this._queue = this._shuffleFn([...this._sorted]);
+    const available =
+      this._excluded.size > 0
+        ? this._sorted.filter((c) => !this._excluded.has(c.startSeconds))
+        : [...this._sorted];
+    this._queue = this._shuffleFn(available);
     this._currentIndex = 0;
     return this.currentChapter;
   }

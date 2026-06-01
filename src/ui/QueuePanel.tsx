@@ -8,12 +8,15 @@ export interface QueuePanelProps {
   currentIndex: number;
   progress: number;
   loopMode: boolean;
+  excludedSeconds: Set<number>;
   onSeek: (index: number) => void;
   onReshuffle: () => void;
   onLoopToggle: () => void;
   onPrev: () => void;
   onNext: () => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
+  onToggleExclusion: (startSeconds: number) => void;
+  onClearExclusions: () => void;
 }
 
 function secondsToTimestamp(totalSeconds: number): string {
@@ -26,20 +29,67 @@ function secondsToTimestamp(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function BanIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-ban"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="m4.9 4.9 14.2 14.2" />
+    </svg>
+  );
+}
+
+function ListXIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-list-x"
+    >
+      <path d="M11 12H3" />
+      <path d="M16 6H3" />
+      <path d="M16 18H3" />
+      <path d="m19 10-4 4" />
+      <path d="m15 10 4 4" />
+    </svg>
+  );
+}
+
 function QueuePanel({
   chapters,
   currentIndex,
   progress,
   loopMode,
+  excludedSeconds,
   onSeek,
   onReshuffle,
   onLoopToggle,
   onPrev,
   onNext,
   onReorder,
+  onToggleExclusion,
+  onClearExclusions,
 }: QueuePanelProps) {
   const atStart = currentIndex === 0;
   const atEnd = currentIndex === chapters.length - 1;
+  const hasExclusions = excludedSeconds.size > 0;
   return (
     <div id={PANEL_ID}>
       <div id="chapshuffle-queue-header">
@@ -68,6 +118,18 @@ function QueuePanel({
             &#8594;
           </button>
         </div>
+        {hasExclusions && (
+          <button
+            id="chapshuffle-clear-exclusions"
+            title="Clear all exclusions"
+            onClick={(e: MouseEvent) => {
+              e.stopPropagation();
+              onClearExclusions();
+            }}
+          >
+            <ListXIcon />
+          </button>
+        )}
         <button
           id="chapshuffle-loop"
           aria-pressed={loopMode}
@@ -106,59 +168,76 @@ function QueuePanel({
         </button>
       </div>
       <div id="chapshuffle-progress" style={{ width: `${Math.round(progress * 100)}%` }} />
-      {chapters.map((chapter, i) => (
-        <div
-          key={chapter.startSeconds}
-          data-index={String(i)}
-          draggable
-          class={`chapshuffle-item${i === currentIndex ? ' chapshuffle-active' : ''}`}
-          onClick={(e: MouseEvent) => {
-            e.stopPropagation();
-            onSeek(i);
-          }}
-          onDragStart={(e: DragEvent) => {
-            e.stopPropagation();
-            e.dataTransfer?.setData('text/plain', String(i));
-            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-          }}
-          onDragOver={(e: DragEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-          }}
-          onDrop={(e: DragEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const fromIndex = Number(e.dataTransfer?.getData('text/plain'));
-            if (!Number.isInteger(fromIndex)) return;
-            onReorder(fromIndex, i);
-          }}
-        >
-          <span class="chapshuffle-drag-handle" title="Drag to reorder" aria-hidden="true">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="lucide lucide-grip-vertical-icon lucide-grip-vertical"
+      {chapters.map((chapter, i) => {
+        const isExcluded = excludedSeconds.has(chapter.startSeconds);
+        return (
+          <div
+            key={chapter.startSeconds}
+            data-index={String(i)}
+            draggable={!isExcluded}
+            class={`chapshuffle-item${i === currentIndex ? ' chapshuffle-active' : ''}${isExcluded ? ' chapshuffle-excluded' : ''}`}
+            onClick={(e: MouseEvent) => {
+              e.stopPropagation();
+              if (!isExcluded) onSeek(i);
+            }}
+            onDragStart={(e: DragEvent) => {
+              if (isExcluded) return;
+              e.stopPropagation();
+              e.dataTransfer?.setData('text/plain', String(i));
+              if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragOver={(e: DragEvent) => {
+              if (isExcluded) return;
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(e: DragEvent) => {
+              if (isExcluded) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const fromIndex = Number(e.dataTransfer?.getData('text/plain'));
+              if (!Number.isInteger(fromIndex)) return;
+              onReorder(fromIndex, i);
+            }}
+          >
+            <span class="chapshuffle-drag-handle" title="Drag to reorder" aria-hidden="true">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-grip-vertical-icon lucide-grip-vertical"
+              >
+                <circle cx="9" cy="12" r="1" />
+                <circle cx="9" cy="5" r="1" />
+                <circle cx="9" cy="19" r="1" />
+                <circle cx="15" cy="12" r="1" />
+                <circle cx="15" cy="5" r="1" />
+                <circle cx="15" cy="19" r="1" />
+              </svg>
+            </span>
+            <span class="chapshuffle-title">{chapter.title}</span>
+            <span class="chapshuffle-time">{secondsToTimestamp(chapter.startSeconds)}</span>
+            <button
+              class="chapshuffle-ban"
+              title={isExcluded ? 'Re-include chapter' : 'Exclude chapter from shuffle'}
+              aria-pressed={isExcluded}
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onToggleExclusion(chapter.startSeconds);
+              }}
             >
-              <circle cx="9" cy="12" r="1" />
-              <circle cx="9" cy="5" r="1" />
-              <circle cx="9" cy="19" r="1" />
-              <circle cx="15" cy="12" r="1" />
-              <circle cx="15" cy="5" r="1" />
-              <circle cx="15" cy="19" r="1" />
-            </svg>
-          </span>
-          <span class="chapshuffle-title">{chapter.title}</span>
-          <span class="chapshuffle-time">{secondsToTimestamp(chapter.startSeconds)}</span>
-        </div>
-      ))}
+              <BanIcon />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

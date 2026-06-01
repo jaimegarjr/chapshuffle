@@ -196,6 +196,14 @@ export class PlaybackController {
     return didReorder;
   }
 
+  setExcluded(excluded: Set<number>): void {
+    this._timeline.setExcluded(excluded);
+  }
+
+  dropFromQueue(startSeconds: number): void {
+    this._timeline.dropFromQueue(startSeconds);
+  }
+
   destroy(): void {
     this._video.removeEventListener('timeupdate', this._bound);
   }

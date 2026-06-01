@@ -12,12 +12,15 @@ function props(overrides: Partial<QueuePanelProps> = {}): QueuePanelProps {
     currentIndex: 0,
     progress: 0,
     loopMode: false,
+    excludedSeconds: new Set(),
     onSeek: () => {},
     onReshuffle: () => {},
     onLoopToggle: () => {},
     onPrev: () => {},
     onNext: () => {},
     onReorder: () => {},
+    onToggleExclusion: () => {},
+    onClearExclusions: () => {},
     ...overrides,
   };
 }

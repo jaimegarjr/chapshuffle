@@ -79,6 +79,46 @@ function ListXIcon() {
   );
 }
 
+function XIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-x"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+function BanIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-ban"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="m4.9 4.9 14.2 14.2" />
+    </svg>
+  );
+}
+
 function LoopIcon() {
   return (
     <svg
@@ -124,40 +164,42 @@ function ShuffleIcon() {
   );
 }
 
-function ArrowBigLeftIcon() {
+function SkipBackIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="17"
       height="17"
       viewBox="0 0 24 24"
-      fill="currentColor"
+      fill="none"
       stroke="currentColor"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
-      class="lucide lucide-arrow-big-left"
+      class="lucide lucide-skip-back"
     >
-      <path d="M18 15h-6v4L3 12l9-7v4h6a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2z" />
+      <polygon points="19 20 9 12 19 4 19 20" />
+      <line x1="5" x2="5" y1="19" y2="5" />
     </svg>
   );
 }
 
-function ArrowBigRightIcon() {
+function SkipForwardIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="17"
       height="17"
       viewBox="0 0 24 24"
-      fill="currentColor"
+      fill="none"
       stroke="currentColor"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
-      class="lucide lucide-arrow-big-right"
+      class="lucide lucide-skip-forward"
     >
-      <path d="M6 9h6V5l9 7-9 7v-4H6a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z" />
+      <polygon points="5 4 15 12 5 20 5 4" />
+      <line x1="19" x2="19" y1="5" y2="19" />
     </svg>
   );
 }
@@ -257,7 +299,7 @@ function QueuePanel({
                 </span>
               ) : (
                 <span class="chapshuffle-exclusion-mark" aria-hidden="true">
-                  {isExcluded ? <ListXIcon /> : <CheckIcon />}
+                  {isExcluded ? <BanIcon /> : <CheckIcon />}
                 </span>
               )}
               <span class="chapshuffle-title">{chapter.title}</span>
@@ -300,7 +342,7 @@ function QueuePanel({
                 onClearExclusions();
               }}
             >
-              <ListXIcon />
+              <XIcon />
               <span>Clear</span>
             </button>
           </>
@@ -327,7 +369,7 @@ function QueuePanel({
                 onPrev();
               }}
             >
-              <ArrowBigLeftIcon />
+              <SkipBackIcon />
             </button>
             <button
               id="chapshuffle-reshuffle"
@@ -349,7 +391,7 @@ function QueuePanel({
                 onNext();
               }}
             >
-              <ArrowBigRightIcon />
+              <SkipForwardIcon />
             </button>
             <button
               id="chapshuffle-edit-exclusions"

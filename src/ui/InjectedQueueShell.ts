@@ -134,10 +134,10 @@ const CSS = `
     display: contents;
   }
   #chapshuffle-queue-footer {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(32px, 1fr) 32px auto 32px minmax(32px, 1fr);
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
+    gap: 4px;
     min-height: var(--chapshuffle-footer-height);
     padding: 7px 10px;
     border-top: 1px solid rgba(255,255,255,0.1);
@@ -186,6 +186,12 @@ const CSS = `
     font-weight: 600;
   }
   .chapshuffle-primary:hover:not(:disabled) { background: rgba(255,255,255,0.18); }
+  #chapshuffle-loop {
+    justify-self: start;
+  }
+  #chapshuffle-edit-exclusions {
+    justify-self: end;
+  }
   #chapshuffle-exclusion-done { flex: 1; }
   #chapshuffle-clear-exclusions { min-width: 96px; }
 
@@ -283,7 +289,9 @@ const CSS = `
     max-height: calc(var(--chapshuffle-row-height) * 10);
   }
   #chapshuffle-queue[data-mode="exclusions"] #chapshuffle-queue-footer {
+    display: flex;
     justify-content: stretch;
+    gap: 6px;
   }
   #chapshuffle-queue[data-mode="exclusions"] .chapshuffle-footer-btn {
     justify-content: center;

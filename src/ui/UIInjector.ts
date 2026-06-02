@@ -11,8 +11,7 @@ import {
 } from '../persistence/PersistenceManager';
 import {
   getExclusions,
-  addExclusion,
-  removeExclusion,
+  setExclusions,
   clearExclusions,
 } from '../exclusion/ExclusionManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
@@ -111,8 +110,10 @@ export class UIInjector {
     this._initTutorialIfNeeded();
 
     if (this._videoId) {
-      getExclusions(this._videoId)
+      const videoId = this._videoId;
+      getExclusions(videoId)
         .then((exclusions) => {
+          if (this._videoId !== videoId) return;
           this._excluded = new Set(exclusions);
           this._controller?.setExcluded(this._excluded);
           this._renderPanel();
@@ -198,12 +199,11 @@ export class UIInjector {
       this._controller?.setExcluded(new Set(this._excluded));
       const chapter = this._allChapters.find((c) => c.startSeconds === startSeconds);
       if (chapter) this._controller?.appendToQueue([chapter]);
-      removeExclusion(this._videoId, startSeconds).catch(() => {});
     } else {
       this._excluded.add(startSeconds);
       this._controller?.setExcluded(new Set(this._excluded));
-      addExclusion(this._videoId, startSeconds).catch(() => {});
     }
+    setExclusions(this._videoId, Array.from(this._excluded)).catch(() => {});
     this._renderPanel();
   }
 

@@ -29,19 +29,13 @@ export async function getExclusions(videoId: string): Promise<number[]> {
   return store[videoId] ?? [];
 }
 
-export async function addExclusion(videoId: string, startSeconds: number): Promise<void> {
+export async function setExclusions(videoId: string, seconds: number[]): Promise<void> {
   const store = await readStore();
-  const current = store[videoId] ?? [];
-  if (!current.includes(startSeconds)) {
-    store[videoId] = [...current, startSeconds];
-    await writeStore(store);
+  if (seconds.length === 0) {
+    delete store[videoId];
+  } else {
+    store[videoId] = seconds;
   }
-}
-
-export async function removeExclusion(videoId: string, startSeconds: number): Promise<void> {
-  const store = await readStore();
-  const current = store[videoId] ?? [];
-  store[videoId] = current.filter((s) => s !== startSeconds);
   await writeStore(store);
 }
 

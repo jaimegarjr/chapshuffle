@@ -1,7 +1,6 @@
 import {
   getExclusions,
-  addExclusion,
-  removeExclusion,
+  setExclusions,
   clearExclusions,
 } from '../src/exclusion/ExclusionManager';
 
@@ -60,58 +59,46 @@ describe('ExclusionManager.getExclusions()', () => {
   });
 });
 
-describe('ExclusionManager.addExclusion()', () => {
-  test('persists a new exclusion and is returned on subsequent reads', async () => {
-    await addExclusion('vid1', 60);
-    expect(await getExclusions('vid1')).toContain(60);
+describe('ExclusionManager.setExclusions()', () => {
+  test('persists a set of exclusions and returns them on subsequent reads', async () => {
+    await setExclusions('vid1', [60, 120]);
+    expect(await getExclusions('vid1')).toEqual([60, 120]);
   });
 
-  test('does not duplicate an already-excluded startSeconds', async () => {
-    await addExclusion('vid1', 60);
-    await addExclusion('vid1', 60);
-    const exclusions = await getExclusions('vid1');
-    expect(exclusions.filter((s) => s === 60)).toHaveLength(1);
+  test('overwrites previous exclusions for the same video', async () => {
+    await setExclusions('vid1', [60, 120]);
+    await setExclusions('vid1', [30]);
+    expect(await getExclusions('vid1')).toEqual([30]);
+  });
+
+  test('two rapid setExclusions calls both survive — last write wins', async () => {
+    await Promise.all([setExclusions('vid1', [60]), setExclusions('vid1', [60, 120])]);
+    const result = await getExclusions('vid1');
+    expect(result).toContain(60);
+  });
+
+  test('clearing with an empty array removes the key', async () => {
+    await setExclusions('vid1', [60]);
+    await setExclusions('vid1', []);
+    expect(await getExclusions('vid1')).toEqual([]);
   });
 
   test('exclusions for one video do not affect another video', async () => {
-    await addExclusion('vid1', 60);
+    await setExclusions('vid1', [60]);
     expect(await getExclusions('vid2')).toEqual([]);
-  });
-});
-
-describe('ExclusionManager.removeExclusion()', () => {
-  test('un-persists an existing exclusion', async () => {
-    await addExclusion('vid1', 60);
-    await removeExclusion('vid1', 60);
-    expect(await getExclusions('vid1')).not.toContain(60);
-  });
-
-  test('leaves other exclusions for the same video intact', async () => {
-    await addExclusion('vid1', 60);
-    await addExclusion('vid1', 120);
-    await removeExclusion('vid1', 60);
-    expect(await getExclusions('vid1')).toContain(120);
-    expect(await getExclusions('vid1')).not.toContain(60);
-  });
-
-  test('is a no-op when startSeconds is not excluded', async () => {
-    await addExclusion('vid1', 60);
-    await removeExclusion('vid1', 999);
-    expect(await getExclusions('vid1')).toEqual([60]);
   });
 });
 
 describe('ExclusionManager.clearExclusions()', () => {
   test('returns empty set after clearing', async () => {
-    await addExclusion('vid1', 60);
-    await addExclusion('vid1', 120);
+    await setExclusions('vid1', [60, 120]);
     await clearExclusions('vid1');
     expect(await getExclusions('vid1')).toEqual([]);
   });
 
   test('clearing one video does not affect another video', async () => {
-    await addExclusion('vid1', 60);
-    await addExclusion('vid2', 90);
+    await setExclusions('vid1', [60]);
+    await setExclusions('vid2', [90]);
     await clearExclusions('vid1');
     expect(await getExclusions('vid2')).toContain(90);
   });

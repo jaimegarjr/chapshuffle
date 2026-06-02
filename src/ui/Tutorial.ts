@@ -1,3 +1,5 @@
+import { PANEL_OPEN_DISPLAY } from './InjectedQueueShell';
+
 const TUTORIAL_CSS_ID = 'chapshuffle-tutorial-styles';
 const TUTORIAL_ID = 'chapshuffle-tutorial';
 const POPUP_WIDTH = 260;
@@ -178,11 +180,11 @@ export class TutorialManager {
     this._detachAnchorListener();
     if (STEPS[nextStep].openPanelBefore) {
       const panel = this._doc.getElementById('chapshuffle-queue');
-      if (panel && panel.style.display !== 'flex') {
+      if (panel && panel.style.display !== PANEL_OPEN_DISPLAY) {
         if (this._openPanel) {
           this._openPanel();
         } else {
-          panel.style.display = 'flex';
+          panel.style.display = PANEL_OPEN_DISPLAY;
           this._doc.getElementById('chapshuffle-btn')?.setAttribute('aria-expanded', 'true');
         }
       }

@@ -21,8 +21,7 @@ function props(overrides: Partial<QueuePanelProps> = {}): QueuePanelProps {
     onPrev: () => {},
     onNext: () => {},
     onReorder: () => {},
-    onToggleExclusion: () => {},
-    onClearExclusions: () => {},
+    onApplyExclusions: () => {},
     ...overrides,
   };
 }

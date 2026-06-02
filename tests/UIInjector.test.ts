@@ -343,12 +343,11 @@ describe('UIInjector — exclusion editing mode', () => {
     expect(document.getElementById('chapshuffle-queue')?.getAttribute('data-mode')).toBe(
       'exclusions'
     );
-    expect(document.getElementById('chapshuffle-queue-title')?.textContent).toBe(
-      'Edit Exclusions'
-    );
+    expect(document.getElementById('chapshuffle-queue-title')?.textContent).toBe('Edit Exclusions');
     expect(document.querySelectorAll('.chapshuffle-drag-handle')).toHaveLength(0);
-    expect(Array.from(document.querySelectorAll('.chapshuffle-title')).map((el) => el.textContent))
-      .toEqual(['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5']);
+    expect(
+      Array.from(document.querySelectorAll('.chapshuffle-title')).map((el) => el.textContent)
+    ).toEqual(['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5']);
 
     randomSpy.mockRestore();
     injector.destroy();
@@ -368,8 +367,9 @@ describe('UIInjector — exclusion editing mode', () => {
 
     (document.getElementById('chapshuffle-edit-exclusions') as HTMLButtonElement).click();
     await Promise.resolve();
-    const chapterThreeRow = Array.from(document.querySelectorAll<HTMLElement>('.chapshuffle-item'))
-      .find((row) => row.querySelector('.chapshuffle-title')?.textContent === 'Chapter 3');
+    const chapterThreeRow = Array.from(
+      document.querySelectorAll<HTMLElement>('.chapshuffle-item')
+    ).find((row) => row.querySelector('.chapshuffle-title')?.textContent === 'Chapter 3');
     chapterThreeRow?.click();
     await Promise.resolve();
     (document.getElementById('chapshuffle-exclusion-done') as HTMLButtonElement).click();
@@ -384,6 +384,95 @@ describe('UIInjector — exclusion editing mode', () => {
     ).toContain(120);
 
     randomSpy.mockRestore();
+    injector.destroy();
+  });
+
+  test('drafting an exclusion does not seek until Done is clicked', async () => {
+    window.history.replaceState(null, '', '/watch?v=video-2');
+    const chromeMock = buildChromeMock();
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    const video = addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    const currentTitle = document.querySelector(
+      '.chapshuffle-active .chapshuffle-title'
+    )?.textContent;
+    expect(currentTitle).toBe('Chapter 2');
+    expect(video.currentTime).toBe(0);
+
+    (document.getElementById('chapshuffle-edit-exclusions') as HTMLButtonElement).click();
+    await Promise.resolve();
+    const currentChapterRow = Array.from(
+      document.querySelectorAll<HTMLElement>('.chapshuffle-item')
+    ).find((row) => row.querySelector('.chapshuffle-title')?.textContent === currentTitle);
+    currentChapterRow?.click();
+    await Promise.resolve();
+
+    expect(video.currentTime).toBe(0);
+    expect(
+      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]> | undefined)?.[
+        'video-2'
+      ]
+    ).toBeUndefined();
+
+    (document.getElementById('chapshuffle-exclusion-done') as HTMLButtonElement).click();
+    await Promise.resolve();
+
+    expect(video.currentTime).toBe(120);
+    expect(
+      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>)['video-2']
+    ).toContain(60);
+
+    randomSpy.mockRestore();
+    injector.destroy();
+  });
+
+  test('exclusion mode keeps at least one chapter included', async () => {
+    window.history.replaceState(null, '', '/watch?v=video-3');
+    const chromeMock = buildChromeMock();
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+
+    (document.getElementById('chapshuffle-edit-exclusions') as HTMLButtonElement).click();
+    await Promise.resolve();
+
+    const rows = () => Array.from(document.querySelectorAll<HTMLElement>('.chapshuffle-item'));
+    for (const row of rows().slice(0, 4)) {
+      row.click();
+      await Promise.resolve();
+    }
+
+    const lastIncludedRow = rows()[4];
+    expect(lastIncludedRow.getAttribute('aria-disabled')).toBe('true');
+    expect(lastIncludedRow.querySelector('.chapshuffle-exclusion-state')?.textContent).toBe(
+      'Included'
+    );
+
+    lastIncludedRow.click();
+    await Promise.resolve();
+
+    expect(lastIncludedRow.querySelector('.chapshuffle-exclusion-state')?.textContent).toBe(
+      'Included'
+    );
+
+    (document.getElementById('chapshuffle-exclusion-done') as HTMLButtonElement).click();
+    await Promise.resolve();
+
+    const persistedExclusions = (
+      chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>
+    )['video-3'];
+    expect(persistedExclusions).toEqual([0, 60, 120, 180]);
+
     injector.destroy();
   });
 });

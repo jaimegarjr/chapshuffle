@@ -9,7 +9,7 @@ const PANEL_MARGIN_PX = 24;
 const PLAYER_CONTROLS_CLEARANCE_PX = 72;
 const VIEWPORT_MARGIN_PX = 16;
 const PANEL_FADE_MS = 160;
-const PANEL_OPEN_DISPLAY = 'flex';
+export const PANEL_OPEN_DISPLAY = 'flex';
 const PLAYER_WAKE_INTERVAL_MS = 300;
 
 const CSS = `
@@ -264,6 +264,13 @@ const CSS = `
   .chapshuffle-exclusion-row.chapshuffle-excluded .chapshuffle-title {
     text-decoration: line-through;
     text-decoration-color: rgba(255,255,255,0.35);
+  }
+  .chapshuffle-exclusion-row.chapshuffle-exclusion-locked {
+    cursor: default;
+  }
+  .chapshuffle-exclusion-row.chapshuffle-exclusion-locked .chapshuffle-exclusion-mark,
+  .chapshuffle-exclusion-row.chapshuffle-exclusion-locked .chapshuffle-exclusion-state {
+    opacity: 0.45;
   }
   .chapshuffle-exclusion-mark {
     width: 18px;

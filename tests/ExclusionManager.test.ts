@@ -1,8 +1,4 @@
-import {
-  getExclusions,
-  setExclusions,
-  clearExclusions,
-} from '../src/exclusion/ExclusionManager';
+import { getExclusions, setExclusions, clearExclusions } from '../src/exclusion/ExclusionManager';
 
 interface MockStore {
   [key: string]: unknown;
@@ -71,6 +67,12 @@ describe('ExclusionManager.setExclusions()', () => {
     expect(await getExclusions('vid1')).toEqual([30]);
   });
 
+  test('deduplicates and sorts exclusions before writing', async () => {
+    await setExclusions('vid1', [180, 0, 180]);
+
+    expect(await getExclusions('vid1')).toEqual([0, 180]);
+  });
+
   test('two rapid setExclusions calls both survive — last write wins', async () => {
     await Promise.all([setExclusions('vid1', [60]), setExclusions('vid1', [60, 120])]);
     const result = await getExclusions('vid1');
@@ -87,8 +89,16 @@ describe('ExclusionManager.setExclusions()', () => {
     await setExclusions('vid1', [60]);
     expect(await getExclusions('vid2')).toEqual([]);
   });
-});
 
+  test('replacing exclusions for one video does not affect another video', async () => {
+    await setExclusions('vid1', [60]);
+    await setExclusions('vid2', [90]);
+    await setExclusions('vid1', [120]);
+
+    expect(await getExclusions('vid1')).toEqual([120]);
+    expect(await getExclusions('vid2')).toEqual([90]);
+  });
+});
 describe('ExclusionManager.clearExclusions()', () => {
   test('returns empty set after clearing', async () => {
     await setExclusions('vid1', [60, 120]);

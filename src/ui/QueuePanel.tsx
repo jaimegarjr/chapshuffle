@@ -18,8 +18,7 @@ export interface QueuePanelProps {
   onPrev: () => void;
   onNext: () => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
-  onToggleExclusion: (startSeconds: number) => void;
-  onClearExclusions: () => void;
+  onApplyExclusions: (excludedSeconds: Set<number>) => void;
 }
 
 function secondsToTimestamp(totalSeconds: number): string {
@@ -237,14 +236,40 @@ function QueuePanel({
   onPrev,
   onNext,
   onReorder,
-  onToggleExclusion,
-  onClearExclusions,
+  onApplyExclusions,
 }: QueuePanelProps) {
   const [isEditingExclusions, setIsEditingExclusions] = useState(false);
+  const [draftExcludedSeconds, setDraftExcludedSeconds] = useState<Set<number>>(
+    () => new Set(excludedSeconds)
+  );
   const atStart = currentIndex === 0;
   const atEnd = currentIndex >= activeCount - 1;
-  const hasExclusions = excludedSeconds.size > 0;
+  const hasDraftExclusions = draftExcludedSeconds.size > 0;
+  const draftIncludedCount = allChapters.filter(
+    (chapter) => !draftExcludedSeconds.has(chapter.startSeconds)
+  ).length;
   const visibleChapters = isEditingExclusions ? allChapters : chapters;
+  const openExclusionEditor = () => {
+    setDraftExcludedSeconds(new Set(excludedSeconds));
+    setIsEditingExclusions(true);
+  };
+  const toggleDraftExclusion = (startSeconds: number) => {
+    setDraftExcludedSeconds((current) => {
+      const next = new Set(current);
+      if (next.has(startSeconds)) {
+        next.delete(startSeconds);
+        return next;
+      }
+      const includedCount = allChapters.filter((chapter) => !next.has(chapter.startSeconds)).length;
+      if (includedCount <= 1) return current;
+      next.add(startSeconds);
+      return next;
+    });
+  };
+  const applyDraftExclusions = () => {
+    onApplyExclusions(new Set(draftExcludedSeconds));
+    setIsEditingExclusions(false);
+  };
 
   return (
     <div id={PANEL_ID} data-mode={isEditingExclusions ? 'exclusions' : 'queue'}>
@@ -255,19 +280,24 @@ function QueuePanel({
       </div>
       <div id="chapshuffle-list">
         {visibleChapters.map((chapter, i) => {
-          const isExcluded = excludedSeconds.has(chapter.startSeconds);
+          const isExcluded = isEditingExclusions
+            ? draftExcludedSeconds.has(chapter.startSeconds)
+            : excludedSeconds.has(chapter.startSeconds);
           const isPlayableRow = !isEditingExclusions;
+          const wouldExcludeLastIncluded =
+            isEditingExclusions && !isExcluded && draftIncludedCount <= 1;
           return (
             <div
               key={chapter.startSeconds}
               data-index={String(i)}
               draggable={isPlayableRow}
               aria-pressed={isEditingExclusions ? isExcluded : undefined}
-              class={`chapshuffle-item${isPlayableRow && i === currentIndex ? ' chapshuffle-active' : ''}${isExcluded ? ' chapshuffle-excluded' : ''}${isEditingExclusions ? ' chapshuffle-exclusion-row' : ''}`}
+              aria-disabled={wouldExcludeLastIncluded ? true : undefined}
+              class={`chapshuffle-item${isPlayableRow && i === currentIndex ? ' chapshuffle-active' : ''}${isExcluded ? ' chapshuffle-excluded' : ''}${isEditingExclusions ? ' chapshuffle-exclusion-row' : ''}${wouldExcludeLastIncluded ? ' chapshuffle-exclusion-locked' : ''}`}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
                 if (isEditingExclusions) {
-                  onToggleExclusion(chapter.startSeconds);
+                  if (!wouldExcludeLastIncluded) toggleDraftExclusion(chapter.startSeconds);
                 } else {
                   onSeek(i);
                 }
@@ -326,7 +356,7 @@ function QueuePanel({
               class="chapshuffle-footer-btn chapshuffle-primary"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                setIsEditingExclusions(false);
+                applyDraftExclusions();
               }}
             >
               <CheckIcon />
@@ -335,11 +365,11 @@ function QueuePanel({
             <button
               id="chapshuffle-clear-exclusions"
               class="chapshuffle-footer-btn"
-              disabled={!hasExclusions}
+              disabled={!hasDraftExclusions}
               title="Clear all exclusions"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                onClearExclusions();
+                setDraftExcludedSeconds(new Set());
               }}
             >
               <XIcon />
@@ -399,7 +429,7 @@ function QueuePanel({
               title="Edit exclusions"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                setIsEditingExclusions(true);
+                openExclusionEditor();
               }}
             >
               <ListXIcon />

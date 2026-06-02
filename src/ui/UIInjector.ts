@@ -142,11 +142,7 @@ export class UIInjector {
 
   private _displayChapters(): Chapter[] {
     const queue = this._controller ? this._controller.queue : [];
-    // Only show excluded chapters that aren't already in the queue (e.g. currently playing).
-    const queueSet = new Set(queue.map((c) => c.startSeconds));
-    const excluded = this._allChapters.filter(
-      (c) => this._excluded.has(c.startSeconds) && !queueSet.has(c.startSeconds)
-    );
+    const excluded = this._allChapters.filter((c) => this._excluded.has(c.startSeconds));
     return [...queue, ...excluded];
   }
 
@@ -158,6 +154,7 @@ export class UIInjector {
     this._shell.render({
       chapters: displayChapters,
       currentIndex: controller.currentIndex,
+      activeCount: queueLength,
       progress: controller.chapterProgress,
       loopMode: this._loopMode,
       excludedSeconds: this._excluded,
@@ -198,13 +195,15 @@ export class UIInjector {
     if (!this._videoId) return;
     if (this._excluded.has(startSeconds)) {
       this._excluded.delete(startSeconds);
+      this._controller?.setExcluded(new Set(this._excluded));
+      const chapter = this._allChapters.find((c) => c.startSeconds === startSeconds);
+      if (chapter) this._controller?.appendToQueue([chapter]);
       removeExclusion(this._videoId, startSeconds).catch(() => {});
     } else {
       this._excluded.add(startSeconds);
-      this._controller?.dropFromQueue(startSeconds);
+      this._controller?.setExcluded(new Set(this._excluded));
       addExclusion(this._videoId, startSeconds).catch(() => {});
     }
-    this._controller?.setExcluded(new Set(this._excluded));
     this._renderPanel();
   }
 

@@ -6,6 +6,7 @@ const PANEL_ID = 'chapshuffle-queue';
 export interface QueuePanelProps {
   chapters: Chapter[];
   currentIndex: number;
+  activeCount: number;
   progress: number;
   loopMode: boolean;
   excludedSeconds: Set<number>;
@@ -75,6 +76,7 @@ function ListXIcon() {
 function QueuePanel({
   chapters,
   currentIndex,
+  activeCount,
   progress,
   loopMode,
   excludedSeconds,
@@ -88,7 +90,7 @@ function QueuePanel({
   onClearExclusions,
 }: QueuePanelProps) {
   const atStart = currentIndex === 0;
-  const atEnd = currentIndex === chapters.length - 1;
+  const atEnd = currentIndex >= activeCount - 1;
   const hasExclusions = excludedSeconds.size > 0;
   return (
     <div id={PANEL_ID}>

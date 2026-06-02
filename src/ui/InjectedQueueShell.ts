@@ -9,6 +9,7 @@ const PANEL_MARGIN_PX = 24;
 const PLAYER_CONTROLS_CLEARANCE_PX = 72;
 const VIEWPORT_MARGIN_PX = 16;
 const PANEL_FADE_MS = 160;
+const PLAYER_WAKE_INTERVAL_MS = 300;
 
 const CSS = `
   #chapshuffle-btn {
@@ -210,9 +211,13 @@ export class InjectedQueueShell {
   private readonly _doc: Document;
   private readonly _onOpen: () => void;
   private _panelMount: HTMLDivElement | null = null;
+  private _panelElement: HTMLElement | null = null;
+  private _playerElement: Element | null = null;
   private _controlsObserver: MutationObserver | null = null;
   private _hideTimer: ReturnType<typeof setTimeout> | null = null;
+  private _playerWakeTimer: ReturnType<typeof setInterval> | null = null;
   private _panelWantedOpen = false;
+  private _panelInteractionActive = false;
   private _hasRendered = false;
 
   constructor(doc: Document, onOpen: () => void) {
@@ -243,6 +248,7 @@ export class InjectedQueueShell {
   render(props: QueuePanelProps): void {
     if (!this._panelMount) return;
     renderQueuePanel(this._panelMount, props);
+    this._bindPanelInteractions();
 
     if (!this._hasRendered) {
       this._hasRendered = true;
@@ -279,6 +285,9 @@ export class InjectedQueueShell {
     this._controlsObserver?.disconnect();
     this._controlsObserver = null;
     this._clearHideTimer();
+    this._stopWakingPlayerControls();
+    this._unbindPanelInteractions();
+    this._playerElement = null;
     if (this._panelMount) {
       unmountQueuePanel(this._panelMount);
       this._panelMount.remove();
@@ -286,6 +295,7 @@ export class InjectedQueueShell {
     }
     this._hasRendered = false;
     this._panelWantedOpen = false;
+    this._panelInteractionActive = false;
     this._doc.getElementById(BTN_ID)?.remove();
   }
 
@@ -338,6 +348,7 @@ export class InjectedQueueShell {
     this._controlsObserver?.disconnect();
     const player = controlsBar.closest('.html5-video-player') ?? controlsBar.parentElement;
     if (!player) return;
+    this._playerElement = player;
 
     this._controlsObserver = new MutationObserver(() => {
       if (player.classList.contains('ytp-autohide')) {
@@ -354,8 +365,19 @@ export class InjectedQueueShell {
     const btn = this._doc.getElementById(BTN_ID);
     if (!panel || panel.style.display !== 'block') return;
 
+    if (fade && this._panelInteractionActive) {
+      this._wakePlayerControls();
+      this._clearHideTimer();
+      panel.classList.remove('chapshuffle-fading-out');
+      return;
+    }
+
     this._clearHideTimer();
-    if (!fade) this._panelWantedOpen = false;
+    if (!fade) {
+      this._panelWantedOpen = false;
+      this._panelInteractionActive = false;
+      this._stopWakingPlayerControls();
+    }
     btn?.setAttribute('aria-expanded', 'false');
     if (btn) btn.title = 'chapshuffle: open queue';
 
@@ -393,6 +415,66 @@ export class InjectedQueueShell {
     if (this._hideTimer === null) return;
     clearTimeout(this._hideTimer);
     this._hideTimer = null;
+  }
+
+  private _bindPanelInteractions(): void {
+    const panel = this._doc.getElementById(PANEL_ID);
+    if (!(panel instanceof HTMLElement) || panel === this._panelElement) return;
+
+    this._unbindPanelInteractions();
+    this._panelElement = panel;
+    panel.addEventListener('mouseenter', this._handlePanelInteractionStart);
+    panel.addEventListener('mouseleave', this._handlePanelInteractionEnd);
+    panel.addEventListener('focusin', this._handlePanelInteractionStart);
+    panel.addEventListener('focusout', this._handlePanelFocusOut);
+  }
+
+  private _unbindPanelInteractions(): void {
+    if (!this._panelElement) return;
+    this._panelElement.removeEventListener('mouseenter', this._handlePanelInteractionStart);
+    this._panelElement.removeEventListener('mouseleave', this._handlePanelInteractionEnd);
+    this._panelElement.removeEventListener('focusin', this._handlePanelInteractionStart);
+    this._panelElement.removeEventListener('focusout', this._handlePanelFocusOut);
+    this._panelElement = null;
+  }
+
+  private _handlePanelInteractionStart = (): void => {
+    this._panelInteractionActive = true;
+    this._startWakingPlayerControls();
+    this._clearHideTimer();
+    const panel = this._doc.getElementById(PANEL_ID);
+    panel?.classList.remove('chapshuffle-fading-out');
+  };
+
+  private _handlePanelInteractionEnd = (): void => {
+    this._panelInteractionActive = false;
+    this._stopWakingPlayerControls();
+  };
+
+  private _handlePanelFocusOut = (event: FocusEvent): void => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && this._panelElement?.contains(nextTarget)) return;
+    this._handlePanelInteractionEnd();
+  };
+
+  private _startWakingPlayerControls(): void {
+    this._wakePlayerControls();
+    if (this._playerWakeTimer !== null) return;
+    this._playerWakeTimer = setInterval(() => this._wakePlayerControls(), PLAYER_WAKE_INTERVAL_MS);
+  }
+
+  private _stopWakingPlayerControls(): void {
+    if (this._playerWakeTimer === null) return;
+    clearInterval(this._playerWakeTimer);
+    this._playerWakeTimer = null;
+  }
+
+  private _wakePlayerControls(): void {
+    const player = this._playerElement;
+    if (!player) return;
+
+    player.classList.remove('ytp-autohide');
+    player.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
   }
 
   private _positionPanelOverVideo(panel: HTMLElement): void {

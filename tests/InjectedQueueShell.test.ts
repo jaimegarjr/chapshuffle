@@ -118,6 +118,86 @@ describe('InjectedQueueShell', () => {
     jest.useRealTimers();
   });
 
+  test('keeps the panel and YouTube controls visible while the user is interacting with it', async () => {
+    jest.useFakeTimers();
+    const { player, controls } = addPlayerWithControls(document);
+    addVideoElement(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+    shell.render(props());
+
+    const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
+    btn.click();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
+    panel.dispatchEvent(new Event('mouseenter'));
+    player.classList.add('ytp-autohide');
+    await Promise.resolve();
+    jest.runOnlyPendingTimers();
+
+    expect(player.classList.contains('ytp-autohide')).toBe(false);
+    expect(panel.style.display).toBe('block');
+    expect(panel.classList.contains('chapshuffle-fading-out')).toBe(false);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    jest.useRealTimers();
+  });
+
+  test('allows YouTube auto-hide to hide the panel after the user leaves the panel', async () => {
+    jest.useFakeTimers();
+    const { player, controls } = addPlayerWithControls(document);
+    addVideoElement(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+    shell.render(props());
+
+    const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
+    btn.click();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
+    panel.dispatchEvent(new Event('mouseenter'));
+    player.classList.add('ytp-autohide');
+    await Promise.resolve();
+    expect(player.classList.contains('ytp-autohide')).toBe(false);
+
+    panel.dispatchEvent(new Event('mouseleave'));
+    player.classList.add('ytp-autohide');
+    await Promise.resolve();
+
+    expect(panel.classList.contains('chapshuffle-fading-out')).toBe(true);
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+
+    jest.runOnlyPendingTimers();
+
+    expect(panel.style.display).toBe('none');
+    jest.useRealTimers();
+  });
+
+  test('leaves the panel open when YouTube controls are visible after the user leaves', async () => {
+    jest.useFakeTimers();
+    const { player, controls } = addPlayerWithControls(document);
+    addVideoElement(document);
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+    shell.render(props());
+
+    const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
+    btn.click();
+
+    const panel = document.getElementById('chapshuffle-queue') as HTMLDivElement;
+    panel.dispatchEvent(new Event('mouseenter'));
+    player.classList.add('ytp-autohide');
+    await Promise.resolve();
+
+    panel.dispatchEvent(new Event('mouseleave'));
+    jest.runOnlyPendingTimers();
+
+    expect(player.classList.contains('ytp-autohide')).toBe(false);
+    expect(panel.style.display).toBe('block');
+    expect(panel.classList.contains('chapshuffle-fading-out')).toBe(false);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    jest.useRealTimers();
+  });
+
   test('restores an auto-hidden panel when YouTube shows player controls again', async () => {
     jest.useFakeTimers();
     const { player, controls } = addPlayerWithControls(document);

@@ -279,7 +279,7 @@ export class TutorialManager {
     const vpW = win.innerWidth || this._doc.documentElement.clientWidth;
     const vpH = win.innerHeight || this._doc.documentElement.clientHeight;
     const POPUP_H = 110;
-    const GAP = 10;
+    const GAP = 20;
     const MARGIN = 8;
 
     if (!target) {

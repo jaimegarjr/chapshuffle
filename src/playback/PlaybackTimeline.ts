@@ -51,6 +51,10 @@ export class PlaybackTimeline {
     );
   }
 
+  appendToQueue(chapters: Chapter[]): void {
+    this._queue = [...this._queue, ...chapters];
+  }
+
   reshuffle(): Chapter | null {
     const available =
       this._excluded.size > 0

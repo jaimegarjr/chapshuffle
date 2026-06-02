@@ -212,6 +212,7 @@ const CSS = `
   }
   .chapshuffle-excluded .chapshuffle-drag-handle { display: none; }
   .chapshuffle-excluded:hover { background: none; }
+  .chapshuffle-excluded.chapshuffle-active { opacity: 1; }
 
   .chapshuffle-ban {
     background: none;

@@ -204,6 +204,10 @@ export class PlaybackController {
     this._timeline.dropFromQueue(startSeconds);
   }
 
+  appendToQueue(chapters: Chapter[]): void {
+    this._timeline.appendToQueue(chapters);
+  }
+
   destroy(): void {
     this._video.removeEventListener('timeupdate', this._bound);
   }

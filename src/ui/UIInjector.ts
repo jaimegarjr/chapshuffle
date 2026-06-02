@@ -138,9 +138,7 @@ export class UIInjector {
   }
 
   private _displayChapters(): Chapter[] {
-    const queue = this._controller ? this._controller.queue : [];
-    const excluded = this._allChapters.filter((c) => this._excluded.has(c.startSeconds));
-    return [...queue, ...excluded];
+    return this._controller ? this._controller.queue : [];
   }
 
   private _renderPanel(): void {
@@ -150,6 +148,7 @@ export class UIInjector {
     const queueLength = controller.queue.length;
     this._shell.render({
       chapters: displayChapters,
+      allChapters: this._allChapters,
       currentIndex: controller.currentIndex,
       activeCount: queueLength,
       progress: controller.chapterProgress,

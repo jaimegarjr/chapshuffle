@@ -9,6 +9,7 @@ const chapters = [
 function props(overrides: Partial<QueuePanelProps> = {}): QueuePanelProps {
   return {
     chapters,
+    allChapters: chapters,
     currentIndex: 0,
     activeCount: chapters.length,
     progress: 0,
@@ -87,7 +88,7 @@ describe('InjectedQueueShell', () => {
     const btn = document.getElementById('chapshuffle-btn') as HTMLButtonElement;
     btn.click();
 
-    expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('block');
+    expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('flex');
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     expect(onOpen).toHaveBeenCalledTimes(1);
 
@@ -140,7 +141,7 @@ describe('InjectedQueueShell', () => {
     jest.runOnlyPendingTimers();
 
     expect(player.classList.contains('ytp-autohide')).toBe(false);
-    expect(panel.style.display).toBe('block');
+    expect(panel.style.display).toBe('flex');
     expect(panel.classList.contains('chapshuffle-fading-out')).toBe(false);
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     jest.useRealTimers();
@@ -196,7 +197,7 @@ describe('InjectedQueueShell', () => {
     jest.runOnlyPendingTimers();
 
     expect(player.classList.contains('ytp-autohide')).toBe(false);
-    expect(panel.style.display).toBe('block');
+    expect(panel.style.display).toBe('flex');
     expect(panel.classList.contains('chapshuffle-fading-out')).toBe(false);
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     jest.useRealTimers();
@@ -222,7 +223,7 @@ describe('InjectedQueueShell', () => {
     player.classList.remove('ytp-autohide');
     await Promise.resolve();
 
-    expect(panel.style.display).toBe('block');
+    expect(panel.style.display).toBe('flex');
     expect(panel.classList.contains('chapshuffle-fading-out')).toBe(false);
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     jest.useRealTimers();
@@ -305,7 +306,7 @@ describe('InjectedQueueShell', () => {
     shell.openPanel();
 
     const panel = document.getElementById('chapshuffle-queue') as HTMLElement;
-    expect(panel.style.display).toBe('block');
+    expect(panel.style.display).toBe('flex');
     expect(document.getElementById('chapshuffle-btn')!.getAttribute('aria-expanded')).toBe('true');
     expect(onOpen).toHaveBeenCalledTimes(1);
   });

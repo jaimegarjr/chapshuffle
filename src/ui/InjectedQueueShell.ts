@@ -9,6 +9,7 @@ const PANEL_MARGIN_PX = 24;
 const PLAYER_CONTROLS_CLEARANCE_PX = 72;
 const VIEWPORT_MARGIN_PX = 16;
 const PANEL_FADE_MS = 160;
+const PANEL_OPEN_DISPLAY = 'flex';
 const PLAYER_WAKE_INTERVAL_MS = 300;
 
 const CSS = `
@@ -46,20 +47,26 @@ const CSS = `
 
   #chapshuffle-queue {
     --chapshuffle-header-height: 44px;
-    --chapshuffle-row-height: 34px;
+    --chapshuffle-footer-height: 48px;
+    --chapshuffle-row-height: 36px;
     position: fixed;
     top: auto;
     right: 24px;
     width: ${PANEL_WIDTH_PX}px;
+    display: flex;
+    flex-direction: column;
     max-height: min(
-      calc(var(--chapshuffle-header-height) + (var(--chapshuffle-row-height) * 10) + 6px),
+      calc(
+        var(--chapshuffle-header-height) + var(--chapshuffle-footer-height) +
+        (var(--chapshuffle-row-height) * 10) + 4px
+      ),
       calc(100vh - 160px)
     );
-    overflow-y: auto;
+    overflow: hidden;
     background: rgba(15, 15, 15, 0.93);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 10px;
-    padding: 0 0 6px;
+    padding: 0;
     z-index: 2147483647;
     color: #fff;
     font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
@@ -77,19 +84,10 @@ const CSS = `
     pointer-events: none;
   }
 
-  #chapshuffle-progress {
-    height: 3px;
-    background: #f00;
-    position: sticky;
-    top: var(--chapshuffle-header-height);
-    z-index: 1;
-    transition: width 0.25s linear;
-  }
-
   #chapshuffle-queue-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     min-height: var(--chapshuffle-header-height);
     padding: 10px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -108,52 +106,88 @@ const CSS = `
     text-transform: uppercase;
     opacity: 0.55;
     flex: 1;
+    text-align: center;
+  }
+  #chapshuffle-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-color: rgba(255,255,255,0.25) transparent;
+  }
+  #chapshuffle-list::-webkit-scrollbar { width: 8px; }
+  #chapshuffle-list::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.22);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  #chapshuffle-progress-track {
+    flex: 0 0 3px;
+    background: rgba(255,255,255,0.1);
+  }
+  #chapshuffle-progress {
+    height: 100%;
+    background: #f00;
+    transition: width 0.25s linear;
   }
   #chapshuffle-nav {
-    display: flex;
-    gap: 2px;
+    display: contents;
   }
+  #chapshuffle-queue-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: var(--chapshuffle-footer-height);
+    padding: 7px 10px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    background: #0f0f0f;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 -1px 0 rgba(255,255,255,0.08);
+  }
+  .chapshuffle-footer-btn,
   .chapshuffle-nav-btn {
     background: none;
-    border: none;
+    border: 1px solid transparent;
     color: #fff;
-    font-size: 14px;
-    padding: 2px 6px;
-    cursor: pointer;
-    opacity: 0.7;
-    border-radius: 4px;
-    transition: opacity 0.1s, background 0.1s;
-  }
-  .chapshuffle-nav-btn:hover:not(:disabled) { opacity: 1; background: rgba(255,255,255,0.1); }
-  .chapshuffle-nav-btn:disabled { opacity: 0.25; cursor: default; }
-
-  #chapshuffle-reshuffle {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #fff;
+    font: inherit;
     font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-  #chapshuffle-reshuffle:hover { background: rgba(255,255,255,0.16); }
-
-  #chapshuffle-loop {
-    background: none;
-    border: none;
-    color: #fff;
-    padding: 4px 6px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0 8px;
     cursor: pointer;
     opacity: 0.7;
-    border-radius: 4px;
+    border-radius: 6px;
     display: inline-flex;
     align-items: center;
-    transition: opacity 0.1s, background 0.1s;
+    justify-content: center;
+    gap: 6px;
+    transition: opacity 0.1s, color 0.1s, background 0.1s, border-color 0.1s;
   }
-  #chapshuffle-loop:hover { opacity: 1; background: rgba(255,255,255,0.1); }
-  #chapshuffle-loop[aria-pressed="true"] { opacity: 1; color: #f00; }
+  .chapshuffle-footer-btn:hover:not(:disabled),
+  .chapshuffle-nav-btn:hover:not(:disabled) { opacity: 1; background: rgba(255,255,255,0.1); }
+  .chapshuffle-footer-btn:disabled,
+  .chapshuffle-nav-btn:disabled { opacity: 0.25; cursor: default; }
+  .chapshuffle-footer-btn[aria-pressed="true"] {
+    opacity: 1;
+    color: #f00;
+    background: rgba(255,0,0,0.12);
+  }
+
+  #chapshuffle-reshuffle {
+    min-width: 118px;
+    white-space: nowrap;
+  }
+  .chapshuffle-primary {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.18);
+    color: #fff;
+    opacity: 1;
+    font-weight: 600;
+  }
+  .chapshuffle-primary:hover:not(:disabled) { background: rgba(255,255,255,0.18); }
+  #chapshuffle-exclusion-done { flex: 1; }
+  #chapshuffle-clear-exclusions { min-width: 96px; }
 
   .chapshuffle-item {
     display: flex;
@@ -207,42 +241,59 @@ const CSS = `
   }
 
   .chapshuffle-excluded {
-    opacity: 0.38;
+    opacity: 0.5;
     cursor: default;
   }
-  .chapshuffle-excluded .chapshuffle-drag-handle { display: none; }
-  .chapshuffle-excluded:hover { background: none; }
-
-  .chapshuffle-ban {
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.38);
-    padding: 2px 4px;
+  .chapshuffle-exclusion-row {
     cursor: pointer;
+    padding-left: 14px;
+  }
+  .chapshuffle-exclusion-row:active {
+    cursor: pointer;
+  }
+  .chapshuffle-exclusion-row.chapshuffle-excluded {
+    opacity: 0.62;
+    background: rgba(255,0,0,0.08);
+  }
+  .chapshuffle-exclusion-row.chapshuffle-excluded .chapshuffle-title {
+    text-decoration: line-through;
+    text-decoration-color: rgba(255,255,255,0.35);
+  }
+  .chapshuffle-exclusion-mark {
+    width: 18px;
+    flex: 0 0 18px;
     display: inline-flex;
     align-items: center;
-    border-radius: 4px;
+    justify-content: center;
+    color: rgba(255,255,255,0.5);
+  }
+  .chapshuffle-excluded .chapshuffle-exclusion-mark {
+    color: #f00;
+  }
+  .chapshuffle-exclusion-state {
+    flex: 0 0 54px;
+    color: rgba(255,255,255,0.45);
+    font-size: 11px;
+    text-align: right;
+  }
+  .chapshuffle-excluded .chapshuffle-exclusion-state {
+    color: rgba(255,110,110,0.85);
+  }
+  #chapshuffle-queue[data-mode="exclusions"] #chapshuffle-list {
+    max-height: calc(var(--chapshuffle-row-height) * 10);
+  }
+  #chapshuffle-queue[data-mode="exclusions"] #chapshuffle-queue-footer {
+    justify-content: stretch;
+  }
+  #chapshuffle-queue[data-mode="exclusions"] .chapshuffle-footer-btn {
+    justify-content: center;
+  }
+  #chapshuffle-queue[data-mode="exclusions"] #chapshuffle-clear-exclusions {
     flex: 0 0 auto;
-    opacity: 0;
-    transition: opacity 0.1s, color 0.1s, background 0.1s;
   }
-  .chapshuffle-item:hover .chapshuffle-ban,
-  .chapshuffle-excluded .chapshuffle-ban { opacity: 1; }
-  .chapshuffle-ban:hover { color: #f00; background: rgba(255,0,0,0.12); }
-  .chapshuffle-ban[aria-pressed="true"] { color: #f00; opacity: 1; }
-
-  #chapshuffle-clear-exclusions {
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.6);
-    padding: 4px 6px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    border-radius: 4px;
-    transition: color 0.1s, background 0.1s;
+  #chapshuffle-queue[data-mode="exclusions"] .chapshuffle-time {
+    opacity: 0.45;
   }
-  #chapshuffle-clear-exclusions:hover { color: #f00; background: rgba(255,0,0,0.12); }
 `;
 
 export class InjectedQueueShell {
@@ -308,13 +359,13 @@ export class InjectedQueueShell {
   openPanel(): void {
     const panel = this._doc.getElementById(PANEL_ID);
     const btn = this._doc.getElementById(BTN_ID);
-    if (!panel || panel.style.display === 'block') return;
+    if (!panel || panel.style.display === PANEL_OPEN_DISPLAY) return;
     this._clearHideTimer();
     panel.classList.remove('chapshuffle-fading-out');
     this._panelWantedOpen = true;
     this._positionPanelOverVideo(panel);
     this._onOpen();
-    panel.style.display = 'block';
+    panel.style.display = PANEL_OPEN_DISPLAY;
     btn?.setAttribute('aria-expanded', 'true');
     if (btn) btn.title = 'chapshuffle: close queue';
   }
@@ -374,7 +425,7 @@ export class InjectedQueueShell {
       this._panelWantedOpen = true;
       this._positionPanelOverVideo(panel);
       this._onOpen();
-      panel.style.display = 'block';
+      panel.style.display = PANEL_OPEN_DISPLAY;
       btn?.setAttribute('aria-expanded', 'true');
       if (btn) btn.title = 'chapshuffle: close queue';
       return;
@@ -401,7 +452,7 @@ export class InjectedQueueShell {
   private _hidePanel(fade: boolean): void {
     const panel = this._doc.getElementById(PANEL_ID);
     const btn = this._doc.getElementById(BTN_ID);
-    if (!panel || panel.style.display !== 'block') return;
+    if (!panel || panel.style.display !== PANEL_OPEN_DISPLAY) return;
 
     if (fade && this._panelInteractionActive) {
       this._wakePlayerControls();
@@ -444,7 +495,7 @@ export class InjectedQueueShell {
     panel.classList.remove('chapshuffle-fading-out');
     this._positionPanelOverVideo(panel);
     this._onOpen();
-    panel.style.display = 'block';
+    panel.style.display = PANEL_OPEN_DISPLAY;
     btn?.setAttribute('aria-expanded', 'true');
     if (btn) btn.title = 'chapshuffle: close queue';
   }

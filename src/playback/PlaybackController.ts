@@ -196,6 +196,28 @@ export class PlaybackController {
     return didReorder;
   }
 
+  setExcluded(excluded: Set<number>): void {
+    const prevChapter = this._timeline.currentChapter;
+    this._timeline.setExcluded(excluded);
+    const nextChapter = this._timeline.currentChapter;
+    if (
+      prevChapter &&
+      nextChapter &&
+      prevChapter.startSeconds !== nextChapter.startSeconds &&
+      this._timeline.queue.length > 0
+    ) {
+      this._seek(this._timeline.currentIndex);
+    }
+  }
+
+  dropFromQueue(startSeconds: number): void {
+    this._timeline.dropFromQueue(startSeconds);
+  }
+
+  appendToQueue(chapters: Chapter[]): void {
+    this._timeline.appendToQueue(chapters);
+  }
+
   destroy(): void {
     this._video.removeEventListener('timeupdate', this._bound);
   }

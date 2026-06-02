@@ -42,6 +42,17 @@ const STEPS: TutorialStep[] = [
     openPanelBefore: true,
   },
   {
+    targetSelector: '.chapshuffle-ban',
+    message:
+      'Click the ban icon on any chapter to exclude it from shuffle — it stays visible but never plays.',
+    openPanelBefore: true,
+  },
+  {
+    targetSelector: '#chapshuffle-clear-exclusions',
+    message: 'Use the clear button in the header to remove all exclusions for this video at once.',
+    openPanelBefore: true,
+  },
+  {
     targetSelector: '#chapshuffle-btn',
     message: 'All set! Find more options — like auto-advance — in the extension menu.',
   },
@@ -268,7 +279,7 @@ export class TutorialManager {
     const vpW = win.innerWidth || this._doc.documentElement.clientWidth;
     const vpH = win.innerHeight || this._doc.documentElement.clientHeight;
     const POPUP_H = 110;
-    const GAP = 10;
+    const GAP = 20;
     const MARGIN = 8;
 
     if (!target) {

@@ -205,6 +205,44 @@ const CSS = `
     font-variant-numeric: tabular-nums;
     font-size: 12px;
   }
+
+  .chapshuffle-excluded {
+    opacity: 0.38;
+    cursor: default;
+  }
+  .chapshuffle-excluded .chapshuffle-drag-handle { display: none; }
+  .chapshuffle-excluded:hover { background: none; }
+
+  .chapshuffle-ban {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.38);
+    padding: 2px 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 4px;
+    flex: 0 0 auto;
+    opacity: 0;
+    transition: opacity 0.1s, color 0.1s, background 0.1s;
+  }
+  .chapshuffle-item:hover .chapshuffle-ban,
+  .chapshuffle-excluded .chapshuffle-ban { opacity: 1; }
+  .chapshuffle-ban:hover { color: #f00; background: rgba(255,0,0,0.12); }
+  .chapshuffle-ban[aria-pressed="true"] { color: #f00; opacity: 1; }
+
+  #chapshuffle-clear-exclusions {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    padding: 4px 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 4px;
+    transition: color 0.1s, background 0.1s;
+  }
+  #chapshuffle-clear-exclusions:hover { color: #f00; background: rgba(255,0,0,0.12); }
 `;
 
 export class InjectedQueueShell {

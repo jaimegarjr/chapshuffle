@@ -79,20 +79,22 @@ describe('TutorialManager — lifecycle', () => {
     expect(tm.currentStep).toBe(1);
   });
 
-  test('next() on last step (6) calls onComplete and deactivates', () => {
+  test('next() on last step (8) calls onComplete and deactivates', () => {
     const doc = setupDoc();
     addTutorialTargets(doc);
     const onComplete = jest.fn();
     const tm = new TutorialManager(doc, onComplete);
     tm.start();
-    // advance to step 6
+    // advance to step 8
     tm.next(); // 1
     tm.next(); // 2
     tm.next(); // 3
     tm.next(); // 4
     tm.next(); // 5
     tm.next(); // 6
-    expect(tm.currentStep).toBe(6);
+    tm.next(); // 7
+    tm.next(); // 8
+    expect(tm.currentStep).toBe(8);
     tm.next(); // past last step => complete
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(tm.isActive).toBe(false);

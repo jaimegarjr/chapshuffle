@@ -10,14 +10,18 @@ function props(overrides: Partial<QueuePanelProps> = {}): QueuePanelProps {
   return {
     chapters,
     currentIndex: 0,
+    activeCount: chapters.length,
     progress: 0,
     loopMode: false,
+    excludedSeconds: new Set(),
     onSeek: () => {},
     onReshuffle: () => {},
     onLoopToggle: () => {},
     onPrev: () => {},
     onNext: () => {},
     onReorder: () => {},
+    onToggleExclusion: () => {},
+    onClearExclusions: () => {},
     ...overrides,
   };
 }

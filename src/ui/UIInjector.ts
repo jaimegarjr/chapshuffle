@@ -9,6 +9,7 @@ import {
   settingsChangeFromChrome,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
+import { getExclusions, setExclusions, clearExclusions } from '../exclusion/ExclusionManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
@@ -26,6 +27,9 @@ export class UIInjector {
   private _queueEndBehavior: QueueEndBehavior = DEFAULT_SETTINGS.queueEndBehavior;
   private _loopMode = false;
   private _tutorial: TutorialManager | null = null;
+  private _videoId: string | null = null;
+  private _excluded: Set<number> = new Set();
+  private _allChapters: Chapter[] = [];
   private readonly _boundHighlightUpdate: () => void;
   private readonly _boundStorageChange: (changes: {
     [key: string]: chrome.storage.StorageChange;
@@ -79,6 +83,10 @@ export class UIInjector {
   private _inject(chapters: Chapter[], controlsBar: Element): void {
     if (this._shell.isMounted) return;
 
+    this._allChapters = chapters;
+    this._videoId =
+      new URLSearchParams(this._doc.defaultView?.location.search ?? '').get('v') ?? null;
+
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
     if (video) {
       this._controller = new PlaybackController(
@@ -96,6 +104,18 @@ export class UIInjector {
     this._shell.updateShuffleState(this._autoAdvance);
     this._renderPanel();
     this._initTutorialIfNeeded();
+
+    if (this._videoId) {
+      const videoId = this._videoId;
+      getExclusions(videoId)
+        .then((exclusions) => {
+          if (this._videoId !== videoId) return;
+          this._excluded = new Set(exclusions);
+          this._controller?.setExcluded(this._excluded);
+          this._renderPanel();
+        })
+        .catch(() => {});
+    }
   }
 
   private _initTutorialIfNeeded(): void {
@@ -117,15 +137,26 @@ export class UIInjector {
       .catch(() => {});
   }
 
+  private _displayChapters(): Chapter[] {
+    const queue = this._controller ? this._controller.queue : [];
+    const excluded = this._allChapters.filter((c) => this._excluded.has(c.startSeconds));
+    return [...queue, ...excluded];
+  }
+
   private _renderPanel(): void {
     if (!this._controller) return;
     const controller = this._controller;
+    const displayChapters = this._displayChapters();
+    const queueLength = controller.queue.length;
     this._shell.render({
-      chapters: controller.queue,
+      chapters: displayChapters,
       currentIndex: controller.currentIndex,
+      activeCount: queueLength,
       progress: controller.chapterProgress,
       loopMode: this._loopMode,
+      excludedSeconds: this._excluded,
       onSeek: (i: number) => {
+        if (i >= queueLength) return;
         controller.seekToChapter(i);
         this._renderPanel();
       },
@@ -144,10 +175,42 @@ export class UIInjector {
         this._renderPanel();
       },
       onReorder: (fromIndex: number, toIndex: number) => {
+        if (fromIndex >= queueLength || toIndex >= queueLength) return;
         controller.reorderQueue(fromIndex, toIndex);
         this._renderPanel();
       },
+      onToggleExclusion: (startSeconds: number) => {
+        this._onToggleExclusion(startSeconds);
+      },
+      onClearExclusions: () => {
+        this._onClearExclusions();
+      },
     });
+  }
+
+  private _onToggleExclusion(startSeconds: number): void {
+    if (!this._videoId) return;
+    if (this._excluded.has(startSeconds)) {
+      this._excluded.delete(startSeconds);
+      this._controller?.setExcluded(new Set(this._excluded));
+      const chapter = this._allChapters.find((c) => c.startSeconds === startSeconds);
+      if (chapter) this._controller?.appendToQueue([chapter]);
+    } else {
+      this._excluded.add(startSeconds);
+      this._controller?.setExcluded(new Set(this._excluded));
+    }
+    setExclusions(this._videoId, Array.from(this._excluded)).catch(() => {});
+    this._renderPanel();
+  }
+
+  private _onClearExclusions(): void {
+    if (!this._videoId) return;
+    const toRestore = this._allChapters.filter((c) => this._excluded.has(c.startSeconds));
+    this._excluded = new Set();
+    this._controller?.setExcluded(this._excluded);
+    if (toRestore.length > 0) this._controller?.appendToQueue(toRestore);
+    clearExclusions(this._videoId).catch(() => {});
+    this._renderPanel();
   }
 
   private _onReshuffle(): void {
@@ -179,6 +242,9 @@ export class UIInjector {
     this._video?.removeEventListener('timeupdate', this._boundHighlightUpdate);
     this._video = null;
     this._loopMode = false;
+    this._videoId = null;
+    this._excluded = new Set();
+    this._allChapters = [];
 
     this._shell.unmount();
   }

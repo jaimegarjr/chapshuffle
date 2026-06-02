@@ -9,3 +9,7 @@ export function shuffle(chapters: Chapter[]): Chapter[] {
   }
   return copy;
 }
+
+export function shuffleExcluding(chapters: Chapter[], excluded: Set<number>): Chapter[] {
+  return shuffle(chapters.filter((c) => !excluded.has(c.startSeconds)));
+}

@@ -29,12 +29,13 @@ export async function getExclusions(videoId: string): Promise<number[]> {
   return store[videoId] ?? [];
 }
 
-export async function setExclusions(videoId: string, seconds: number[]): Promise<void> {
+export async function setExclusions(videoId: string, startSeconds: number[]): Promise<void> {
   const store = await readStore();
-  if (seconds.length === 0) {
-    delete store[videoId];
+  const uniqueExclusions = [...new Set(startSeconds)].sort((a, b) => a - b);
+  if (uniqueExclusions.length > 0) {
+    store[videoId] = uniqueExclusions;
   } else {
-    store[videoId] = seconds;
+    delete store[videoId];
   }
   await writeStore(store);
 }

@@ -21,8 +21,8 @@ function addTutorialTargets(doc: Document): void {
   header.id = 'chapshuffle-queue-header';
   doc.body.appendChild(header);
 
-  const nav = doc.createElement('div');
-  nav.id = 'chapshuffle-nav';
+  const nav = doc.createElement('button');
+  nav.className = 'chapshuffle-nav-btn';
   doc.body.appendChild(nav);
 
   const reshuffle = doc.createElement('button');
@@ -32,6 +32,14 @@ function addTutorialTargets(doc: Document): void {
   const loop = doc.createElement('button');
   loop.id = 'chapshuffle-loop';
   doc.body.appendChild(loop);
+
+  const editExclusions = doc.createElement('button');
+  editExclusions.id = 'chapshuffle-edit-exclusions';
+  doc.body.appendChild(editExclusions);
+
+  const footer = doc.createElement('div');
+  footer.id = 'chapshuffle-queue-footer';
+  doc.body.appendChild(footer);
 
   const item = doc.createElement('div');
   item.className = 'chapshuffle-item';
@@ -158,7 +166,7 @@ describe('TutorialManager — panel opening', () => {
     addTutorialTargets(doc);
     const openPanel = jest.fn(() => {
       const panel = doc.getElementById('chapshuffle-queue');
-      if (panel) panel.style.display = 'block';
+      if (panel) panel.style.display = 'flex';
     });
     const tm = new TutorialManager(doc, () => {}, openPanel);
     tm.start();
@@ -166,14 +174,14 @@ describe('TutorialManager — panel opening', () => {
     expect(queue.style.display).toBe('none');
     tm.next();
     expect(openPanel).toHaveBeenCalledTimes(1);
-    expect(queue.style.display).toBe('block');
+    expect(queue.style.display).toBe('flex');
   });
 
   test('openPanel callback is not called when panel is already open', () => {
     const doc = setupDoc();
     addTutorialTargets(doc);
     const queue = doc.getElementById('chapshuffle-queue')!;
-    queue.style.display = 'block';
+    queue.style.display = 'flex';
     const openPanel = jest.fn();
     const tm = new TutorialManager(doc, () => {}, openPanel);
     tm.start();

@@ -9,7 +9,7 @@ import {
   settingsChangeFromChrome,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
-import { getExclusions, setExclusions, clearExclusions } from '../exclusion/ExclusionManager';
+import { getExclusions, setExclusions } from '../exclusion/ExclusionManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
@@ -138,9 +138,7 @@ export class UIInjector {
   }
 
   private _displayChapters(): Chapter[] {
-    const queue = this._controller ? this._controller.queue : [];
-    const excluded = this._allChapters.filter((c) => this._excluded.has(c.startSeconds));
-    return [...queue, ...excluded];
+    return this._controller ? this._controller.queue : [];
   }
 
   private _renderPanel(): void {
@@ -150,6 +148,7 @@ export class UIInjector {
     const queueLength = controller.queue.length;
     this._shell.render({
       chapters: displayChapters,
+      allChapters: this._allChapters,
       currentIndex: controller.currentIndex,
       activeCount: queueLength,
       progress: controller.chapterProgress,
@@ -179,37 +178,30 @@ export class UIInjector {
         controller.reorderQueue(fromIndex, toIndex);
         this._renderPanel();
       },
-      onToggleExclusion: (startSeconds: number) => {
-        this._onToggleExclusion(startSeconds);
-      },
-      onClearExclusions: () => {
-        this._onClearExclusions();
+      onApplyExclusions: (excludedSeconds: Set<number>) => {
+        this._onApplyExclusions(excludedSeconds);
       },
     });
   }
 
-  private _onToggleExclusion(startSeconds: number): void {
+  private _onApplyExclusions(nextExcluded: Set<number>): void {
     if (!this._videoId) return;
-    if (this._excluded.has(startSeconds)) {
-      this._excluded.delete(startSeconds);
-      this._controller?.setExcluded(new Set(this._excluded));
-      const chapter = this._allChapters.find((c) => c.startSeconds === startSeconds);
-      if (chapter) this._controller?.appendToQueue([chapter]);
-    } else {
-      this._excluded.add(startSeconds);
-      this._controller?.setExcluded(new Set(this._excluded));
-    }
-    setExclusions(this._videoId, Array.from(this._excluded)).catch(() => {});
-    this._renderPanel();
-  }
+    const knownStarts = new Set(this._allChapters.map((chapter) => chapter.startSeconds));
+    const normalized = new Set(
+      [...nextExcluded].filter((startSeconds) => knownStarts.has(startSeconds))
+    );
+    if (this._allChapters.length > 0 && normalized.size >= this._allChapters.length) return;
 
-  private _onClearExclusions(): void {
-    if (!this._videoId) return;
-    const toRestore = this._allChapters.filter((c) => this._excluded.has(c.startSeconds));
-    this._excluded = new Set();
+    const previousExcluded = new Set(this._excluded);
+    const toRestore = this._allChapters.filter(
+      (chapter) =>
+        previousExcluded.has(chapter.startSeconds) && !normalized.has(chapter.startSeconds)
+    );
+
+    this._excluded = normalized;
     this._controller?.setExcluded(this._excluded);
     if (toRestore.length > 0) this._controller?.appendToQueue(toRestore);
-    clearExclusions(this._videoId).catch(() => {});
+    setExclusions(this._videoId, [...this._excluded]).catch(() => {});
     this._renderPanel();
   }
 

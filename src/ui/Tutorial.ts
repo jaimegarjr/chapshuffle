@@ -1,3 +1,5 @@
+import { PANEL_OPEN_DISPLAY } from './InjectedQueueShell';
+
 const TUTORIAL_CSS_ID = 'chapshuffle-tutorial-styles';
 const TUTORIAL_ID = 'chapshuffle-tutorial';
 const POPUP_WIDTH = 260;
@@ -22,7 +24,7 @@ const STEPS: TutorialStep[] = [
     openPanelBefore: true,
   },
   {
-    targetSelector: '#chapshuffle-nav',
+    targetSelector: '.chapshuffle-nav-btn',
     message: 'Use the arrows to jump to the previous or next chapter.',
     openPanelBefore: true,
   },
@@ -42,14 +44,13 @@ const STEPS: TutorialStep[] = [
     openPanelBefore: true,
   },
   {
-    targetSelector: '.chapshuffle-ban',
-    message:
-      'Click the ban icon on any chapter to exclude it from shuffle — it stays visible but never plays.',
+    targetSelector: '#chapshuffle-edit-exclusions',
+    message: 'Open exclusion mode when you want to choose which chapters shuffle can play.',
     openPanelBefore: true,
   },
   {
-    targetSelector: '#chapshuffle-clear-exclusions',
-    message: 'Use the clear button in the header to remove all exclusions for this video at once.',
+    targetSelector: '#chapshuffle-queue-footer',
+    message: 'In exclusion mode, rows toggle inclusion and Done returns you to the queue.',
     openPanelBefore: true,
   },
   {
@@ -179,11 +180,11 @@ export class TutorialManager {
     this._detachAnchorListener();
     if (STEPS[nextStep].openPanelBefore) {
       const panel = this._doc.getElementById('chapshuffle-queue');
-      if (panel && panel.style.display !== 'block') {
+      if (panel && panel.style.display !== PANEL_OPEN_DISPLAY) {
         if (this._openPanel) {
           this._openPanel();
         } else {
-          panel.style.display = 'block';
+          panel.style.display = PANEL_OPEN_DISPLAY;
           this._doc.getElementById('chapshuffle-btn')?.setAttribute('aria-expanded', 'true');
         }
       }

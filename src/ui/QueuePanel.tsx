@@ -1,10 +1,12 @@
 import { render } from 'preact';
+import { useState } from 'preact/hooks';
 import type { Chapter } from '../types';
 
 const PANEL_ID = 'chapshuffle-queue';
 
 export interface QueuePanelProps {
   chapters: Chapter[];
+  allChapters: Chapter[];
   currentIndex: number;
   activeCount: number;
   progress: number;
@@ -16,8 +18,7 @@ export interface QueuePanelProps {
   onPrev: () => void;
   onNext: () => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
-  onToggleExclusion: (startSeconds: number) => void;
-  onClearExclusions: () => void;
+  onApplyExclusions: (excludedSeconds: Set<number>) => void;
 }
 
 function secondsToTimestamp(totalSeconds: number): string {
@@ -30,22 +31,26 @@ function secondsToTimestamp(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function BanIcon() {
+function GripIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="14"
-      height="14"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
-      class="lucide lucide-ban"
+      class="lucide lucide-grip-vertical"
     >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m4.9 4.9 14.2 14.2" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="19" r="1" />
     </svg>
   );
 }
@@ -54,8 +59,8 @@ function ListXIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="14"
-      height="14"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -73,8 +78,153 @@ function ListXIcon() {
   );
 }
 
+function XIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-x"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+function BanIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-ban"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="m4.9 4.9 14.2 14.2" />
+    </svg>
+  );
+}
+
+function LoopIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-repeat-2"
+    >
+      <path d="m17 2 4 4-4 4" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <path d="m7 22-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  );
+}
+
+function ShuffleIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-shuffle"
+    >
+      <path d="m18 14 4 4-4 4" />
+      <path d="m18 2 4 4-4 4" />
+      <path d="M2 18h1.4c1.3 0 2.5-.6 3.2-1.7l6.8-10.6C14.1 4.6 15.3 4 16.6 4H22" />
+      <path d="M2 6h1.9c1.1 0 2.1.4 2.8 1.2" />
+      <path d="M12.9 15.8c.7 1.3 2 2.2 3.5 2.2H22" />
+    </svg>
+  );
+}
+
+function SkipBackIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-skip-back"
+    >
+      <polygon points="19 20 9 12 19 4 19 20" />
+      <line x1="5" x2="5" y1="19" y2="5" />
+    </svg>
+  );
+}
+
+function SkipForwardIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-skip-forward"
+    >
+      <polygon points="5 4 15 12 5 20 5 4" />
+      <line x1="19" x2="19" y1="5" y2="19" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="lucide lucide-check"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 function QueuePanel({
   chapters,
+  allChapters,
   currentIndex,
   activeCount,
   progress,
@@ -86,160 +236,207 @@ function QueuePanel({
   onPrev,
   onNext,
   onReorder,
-  onToggleExclusion,
-  onClearExclusions,
+  onApplyExclusions,
 }: QueuePanelProps) {
+  const [isEditingExclusions, setIsEditingExclusions] = useState(false);
+  const [draftExcludedSeconds, setDraftExcludedSeconds] = useState<Set<number>>(
+    () => new Set(excludedSeconds)
+  );
   const atStart = currentIndex === 0;
   const atEnd = currentIndex >= activeCount - 1;
-  const hasExclusions = excludedSeconds.size > 0;
+  const hasDraftExclusions = draftExcludedSeconds.size > 0;
+  const draftIncludedCount = allChapters.filter(
+    (chapter) => !draftExcludedSeconds.has(chapter.startSeconds)
+  ).length;
+  const visibleChapters = isEditingExclusions ? allChapters : chapters;
+  const openExclusionEditor = () => {
+    setDraftExcludedSeconds(new Set(excludedSeconds));
+    setIsEditingExclusions(true);
+  };
+  const toggleDraftExclusion = (startSeconds: number) => {
+    setDraftExcludedSeconds((current) => {
+      const next = new Set(current);
+      if (next.has(startSeconds)) {
+        next.delete(startSeconds);
+        return next;
+      }
+      const includedCount = allChapters.filter((chapter) => !next.has(chapter.startSeconds)).length;
+      if (includedCount <= 1) return current;
+      next.add(startSeconds);
+      return next;
+    });
+  };
+  const applyDraftExclusions = () => {
+    onApplyExclusions(new Set(draftExcludedSeconds));
+    setIsEditingExclusions(false);
+  };
+
   return (
-    <div id={PANEL_ID}>
+    <div id={PANEL_ID} data-mode={isEditingExclusions ? 'exclusions' : 'queue'}>
       <div id="chapshuffle-queue-header">
-        <span id="chapshuffle-queue-title">Shuffle Queue</span>
-        <div id="chapshuffle-nav">
-          <button
-            class="chapshuffle-nav-btn"
-            disabled={atStart}
-            title="Previous chapter"
-            onClick={(e: MouseEvent) => {
-              e.stopPropagation();
-              onPrev();
-            }}
-          >
-            &#8592;
-          </button>
-          <button
-            class="chapshuffle-nav-btn"
-            disabled={atEnd}
-            title="Next chapter"
-            onClick={(e: MouseEvent) => {
-              e.stopPropagation();
-              onNext();
-            }}
-          >
-            &#8594;
-          </button>
-        </div>
-        {hasExclusions && (
-          <button
-            id="chapshuffle-clear-exclusions"
-            title="Clear all exclusions"
-            onClick={(e: MouseEvent) => {
-              e.stopPropagation();
-              onClearExclusions();
-            }}
-          >
-            <ListXIcon />
-          </button>
-        )}
-        <button
-          id="chapshuffle-loop"
-          aria-pressed={loopMode}
-          title={loopMode ? 'Loop: on — click to disable' : 'Loop: off — click to enable'}
-          onClick={(e: MouseEvent) => {
-            e.stopPropagation();
-            onLoopToggle();
-          }}
-          style={{ color: loopMode ? '#f00' : undefined }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="m17 2 4 4-4 4" />
-            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-            <path d="m7 22-4-4 4-4" />
-            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-          </svg>
-        </button>
-        <button
-          id="chapshuffle-reshuffle"
-          onClick={(e: MouseEvent) => {
-            e.stopPropagation();
-            onReshuffle();
-          }}
-        >
-          ⇄ Reshuffle
-        </button>
+        <span id="chapshuffle-queue-title">
+          {isEditingExclusions ? 'Edit Exclusions' : 'Shuffle Queue'}
+        </span>
       </div>
-      <div id="chapshuffle-progress" style={{ width: `${Math.round(progress * 100)}%` }} />
-      {chapters.map((chapter, i) => {
-        const isExcluded = excludedSeconds.has(chapter.startSeconds);
-        return (
-          <div
-            key={chapter.startSeconds}
-            data-index={String(i)}
-            draggable={!isExcluded}
-            class={`chapshuffle-item${i === currentIndex ? ' chapshuffle-active' : ''}${isExcluded ? ' chapshuffle-excluded' : ''}`}
-            onClick={(e: MouseEvent) => {
-              e.stopPropagation();
-              if (!isExcluded) onSeek(i);
-            }}
-            onDragStart={(e: DragEvent) => {
-              if (isExcluded) return;
-              e.stopPropagation();
-              e.dataTransfer?.setData('text/plain', String(i));
-              if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-            }}
-            onDragOver={(e: DragEvent) => {
-              if (isExcluded) return;
-              e.preventDefault();
-              e.stopPropagation();
-              if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-            }}
-            onDrop={(e: DragEvent) => {
-              if (isExcluded) return;
-              e.preventDefault();
-              e.stopPropagation();
-              const fromIndex = Number(e.dataTransfer?.getData('text/plain'));
-              if (!Number.isInteger(fromIndex)) return;
-              onReorder(fromIndex, i);
-            }}
-          >
-            <span class="chapshuffle-drag-handle" title="Drag to reorder" aria-hidden="true">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="lucide lucide-grip-vertical-icon lucide-grip-vertical"
-              >
-                <circle cx="9" cy="12" r="1" />
-                <circle cx="9" cy="5" r="1" />
-                <circle cx="9" cy="19" r="1" />
-                <circle cx="15" cy="12" r="1" />
-                <circle cx="15" cy="5" r="1" />
-                <circle cx="15" cy="19" r="1" />
-              </svg>
-            </span>
-            <span class="chapshuffle-title">{chapter.title}</span>
-            <span class="chapshuffle-time">{secondsToTimestamp(chapter.startSeconds)}</span>
-            <button
-              class="chapshuffle-ban"
-              title={isExcluded ? 'Re-include chapter' : 'Exclude chapter from shuffle'}
-              aria-pressed={isExcluded}
+      <div id="chapshuffle-list">
+        {visibleChapters.map((chapter, i) => {
+          const isExcluded = isEditingExclusions
+            ? draftExcludedSeconds.has(chapter.startSeconds)
+            : excludedSeconds.has(chapter.startSeconds);
+          const isPlayableRow = !isEditingExclusions;
+          const wouldExcludeLastIncluded =
+            isEditingExclusions && !isExcluded && draftIncludedCount <= 1;
+          return (
+            <div
+              key={chapter.startSeconds}
+              data-index={String(i)}
+              draggable={isPlayableRow}
+              aria-pressed={isEditingExclusions ? isExcluded : undefined}
+              aria-disabled={wouldExcludeLastIncluded ? true : undefined}
+              class={`chapshuffle-item${isPlayableRow && i === currentIndex ? ' chapshuffle-active' : ''}${isExcluded ? ' chapshuffle-excluded' : ''}${isEditingExclusions ? ' chapshuffle-exclusion-row' : ''}${wouldExcludeLastIncluded ? ' chapshuffle-exclusion-locked' : ''}`}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                onToggleExclusion(chapter.startSeconds);
+                if (isEditingExclusions) {
+                  if (!wouldExcludeLastIncluded) toggleDraftExclusion(chapter.startSeconds);
+                } else {
+                  onSeek(i);
+                }
+              }}
+              onDragStart={(e: DragEvent) => {
+                if (!isPlayableRow) return;
+                e.stopPropagation();
+                e.dataTransfer?.setData('text/plain', String(i));
+                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragOver={(e: DragEvent) => {
+                if (!isPlayableRow) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e: DragEvent) => {
+                if (!isPlayableRow) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const fromIndex = Number(e.dataTransfer?.getData('text/plain'));
+                if (!Number.isInteger(fromIndex)) return;
+                onReorder(fromIndex, i);
               }}
             >
-              <BanIcon />
+              {isPlayableRow ? (
+                <span class="chapshuffle-drag-handle" title="Drag to reorder" aria-hidden="true">
+                  <GripIcon />
+                </span>
+              ) : (
+                <span class="chapshuffle-exclusion-mark" aria-hidden="true">
+                  {isExcluded ? <BanIcon /> : <CheckIcon />}
+                </span>
+              )}
+              <span class="chapshuffle-title">{chapter.title}</span>
+              <span class="chapshuffle-time">{secondsToTimestamp(chapter.startSeconds)}</span>
+              {isEditingExclusions && (
+                <span class="chapshuffle-exclusion-state">
+                  {isExcluded ? 'Excluded' : 'Included'}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {!isEditingExclusions && (
+        <div id="chapshuffle-progress-track">
+          <div id="chapshuffle-progress" style={{ width: `${Math.round(progress * 100)}%` }} />
+        </div>
+      )}
+      <div id="chapshuffle-queue-footer">
+        {isEditingExclusions ? (
+          <>
+            <button
+              id="chapshuffle-exclusion-done"
+              class="chapshuffle-footer-btn chapshuffle-primary"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                applyDraftExclusions();
+              }}
+            >
+              <CheckIcon />
+              <span>Done</span>
             </button>
-          </div>
-        );
-      })}
+            <button
+              id="chapshuffle-clear-exclusions"
+              class="chapshuffle-footer-btn"
+              disabled={!hasDraftExclusions}
+              title="Clear all exclusions"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                setDraftExcludedSeconds(new Set());
+              }}
+            >
+              <XIcon />
+              <span>Clear</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              id="chapshuffle-loop"
+              class="chapshuffle-footer-btn"
+              aria-pressed={loopMode}
+              title={loopMode ? 'Loop: on - click to disable' : 'Loop: off - click to enable'}
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onLoopToggle();
+              }}
+            >
+              <LoopIcon />
+            </button>
+            <button
+              class="chapshuffle-nav-btn"
+              disabled={atStart}
+              title="Previous chapter"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onPrev();
+              }}
+            >
+              <SkipBackIcon />
+            </button>
+            <button
+              id="chapshuffle-reshuffle"
+              class="chapshuffle-footer-btn chapshuffle-primary"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onReshuffle();
+              }}
+            >
+              <ShuffleIcon />
+              <span>Reshuffle</span>
+            </button>
+            <button
+              class="chapshuffle-nav-btn"
+              disabled={atEnd}
+              title="Next chapter"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onNext();
+              }}
+            >
+              <SkipForwardIcon />
+            </button>
+            <button
+              id="chapshuffle-edit-exclusions"
+              class="chapshuffle-footer-btn"
+              title="Edit exclusions"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                openExclusionEditor();
+              }}
+            >
+              <ListXIcon />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

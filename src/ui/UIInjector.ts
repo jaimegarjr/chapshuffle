@@ -9,11 +9,7 @@ import {
   settingsChangeFromChrome,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
-import {
-  getExclusions,
-  setExclusions,
-  clearExclusions,
-} from '../exclusion/ExclusionManager';
+import { getExclusions, setExclusions, clearExclusions } from '../exclusion/ExclusionManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';

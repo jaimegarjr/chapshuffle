@@ -44,9 +44,7 @@ export class PlaybackTimeline {
     const currentChapter = this.currentChapter;
     this._queue = this._queue.filter((c) => !excluded.has(c.startSeconds));
     if (currentChapter && !excluded.has(currentChapter.startSeconds)) {
-      const newIndex = this._queue.findIndex(
-        (c) => c.startSeconds === currentChapter.startSeconds
-      );
+      const newIndex = this._queue.findIndex((c) => c.startSeconds === currentChapter.startSeconds);
       if (newIndex >= 0) this._currentIndex = newIndex;
     } else {
       this._currentIndex = Math.max(0, Math.min(this._currentIndex, this._queue.length - 1));

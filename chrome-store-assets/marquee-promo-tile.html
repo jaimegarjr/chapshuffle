@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1400, initial-scale=1">
+  <title>Chap Shuffle Marquee Promo Tile</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 1400px;
+      height: 560px;
+      margin: 0;
+      overflow: hidden;
+      background: #0a0a0a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .tile {
+      position: relative;
+      width: 1400px;
+      height: 560px;
+      overflow: hidden;
+      color: #ffffff;
+      background:
+        radial-gradient(circle at 82% 84%, rgba(255, 0, 0, 0.28), transparent 43%),
+        radial-gradient(circle at 21% 52%, rgba(255, 0, 0, 0.15), transparent 34%),
+        linear-gradient(135deg, #070707 0%, #101010 55%, #1b0606 100%);
+    }
+
+    .tile::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.11;
+      background-image:
+        linear-gradient(rgba(255, 0, 0, 0.19) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.16) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .youtube-bg {
+      position: absolute;
+      inset: 22px 36px 36px;
+      border: 1px solid rgba(255, 255, 255, 0.055);
+      border-radius: 24px;
+      opacity: 0.5;
+    }
+
+    .brand {
+      position: absolute;
+      top: 28px;
+      left: 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: rgba(255, 255, 255, 0.52);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .play {
+      width: 24px;
+      height: 18px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.48);
+      position: relative;
+    }
+
+    .play::after {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 4px;
+      width: 0;
+      height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 8px solid #0a0a0a;
+    }
+
+    .search {
+      position: absolute;
+      top: 18px;
+      left: 180px;
+      width: 560px;
+      height: 40px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.045);
+    }
+
+    .search::before {
+      content: "Search";
+      position: absolute;
+      top: 10px;
+      left: 22px;
+      color: rgba(255, 255, 255, 0.16);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .dots {
+      position: absolute;
+      top: 20px;
+      right: 36px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .dots span {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .rail {
+      position: absolute;
+      top: 96px;
+      left: 24px;
+      display: grid;
+      gap: 27px;
+    }
+
+    .rail span {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 58px;
+      padding: 76px 84px 60px 116px;
+    }
+
+    .icon-card {
+      width: 178px;
+      height: 178px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      border-radius: 28px;
+      background: rgba(18, 18, 18, 0.93);
+      border: 4px solid rgba(255, 0, 0, 0.48);
+      box-shadow:
+        0 0 55px rgba(255, 0, 0, 0.31),
+        0 26px 58px rgba(0, 0, 0, 0.68);
+    }
+
+    .icon-card svg {
+      width: 122px;
+      height: 122px;
+      color: #ff1010;
+      filter: drop-shadow(0 0 18px rgba(255, 0, 0, 0.95));
+    }
+
+    .queue {
+      width: 342px;
+      border-radius: 16px;
+      overflow: hidden;
+      flex: 0 0 auto;
+      background: rgba(18, 18, 18, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 26px 62px rgba(0, 0, 0, 0.68);
+    }
+
+    .queue-header {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: #181818;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .queue-title {
+      color: rgba(255, 255, 255, 0.68);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .queue-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: rgba(255, 255, 255, 0.56);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .reshuffle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 34px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: #2b2b2b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .progress {
+      height: 3px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .progress span {
+      display: block;
+      width: 35%;
+      height: 100%;
+      background: #ff0000;
+      box-shadow: 0 0 9px rgba(255, 0, 0, 0.72);
+    }
+
+    .tracks {
+      padding: 10px 0 14px;
+      background: rgba(15, 15, 15, 0.68);
+    }
+
+    .track {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      height: 45px;
+      padding: 0 20px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .track time {
+      color: rgba(255, 255, 255, 0.34);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .copy {
+      min-width: 0;
+      flex: 1 1 auto;
+      padding-left: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 520px;
+      font-size: 94px;
+      line-height: 0.86;
+      letter-spacing: -0.052em;
+      font-weight: 950;
+    }
+
+    .rule {
+      width: 390px;
+      height: 7px;
+      margin: 22px 0 27px;
+      border-radius: 999px;
+      background: #dc171f;
+      box-shadow: 0 0 20px rgba(255, 0, 0, 0.68);
+    }
+
+    p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 31px;
+      line-height: 1.08;
+      font-weight: 750;
+      letter-spacing: -0.035em;
+    }
+
+    p strong {
+      color: #ffffff;
+      font-weight: 950;
+    }
+
+    .store-badge {
+      position: absolute;
+      right: 44px;
+      bottom: 30px;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      height: 58px;
+      padding: 0 20px;
+      border-radius: 15px;
+      background: #ffffff;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+    }
+
+    .store-icon {
+      width: 33px;
+      height: 33px;
+      object-fit: contain;
+    }
+
+    .badge-copy {
+      display: grid;
+      gap: 2px;
+      line-height: 1;
+    }
+
+    .badge-copy span:first-child {
+      color: #777777;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+    }
+
+    .badge-copy span:last-child {
+      color: #171717;
+      font-size: 17px;
+      font-weight: 950;
+      letter-spacing: -0.03em;
+    }
+  </style>
+</head>
+<body>
+  <main class="tile" aria-label="Chap Shuffle marquee promo tile">
+    <div class="youtube-bg"></div>
+    <div class="brand"><span class="play"></span><span>YouTube</span></div>
+    <div class="search"></div>
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="rail"><span></span><span></span><span></span><span></span></div>
+
+    <section class="content">
+      <div class="icon-card" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m18 14 4 4-4 4"></path>
+          <path d="m18 2 4 4-4 4"></path>
+          <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"></path>
+          <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"></path>
+          <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"></path>
+        </svg>
+      </div>
+
+      <aside class="queue" aria-hidden="true">
+        <div class="queue-header">
+          <span class="queue-title">Shuffle Queue</span>
+          <div class="queue-actions">
+            <span>&larr;</span>
+            <span>&rarr;</span>
+            <span class="reshuffle">↻ Reshuffle</span>
+          </div>
+        </div>
+        <div class="progress"><span></span></div>
+        <div class="tracks">
+          <div class="track"><span>27 | New Beginning</span><time>1:15:59</time></div>
+          <div class="track"><span>15 | Darkness</span><time>39:45</time></div>
+          <div class="track"><span>05 | Blind Alley</span><time>11:21</time></div>
+          <div class="track"><span>34 | Rivers in the Desert</span><time>1:35:02</time></div>
+          <div class="track"><span>35 | Freedom and Security</span><time>1:39:51</time></div>
+          <div class="track"><span>21 | Price</span><time>58:00</time></div>
+        </div>
+      </aside>
+
+      <div class="copy">
+        <h1>Chap<br>Shuffle</h1>
+        <div class="rule"></div>
+        <p>Auto-advance through<br><strong>shuffled chapters</strong></p>
+      </div>
+    </section>
+
+    <div class="store-badge" aria-hidden="true">
+      <img
+        class="store-icon"
+        alt=""
+        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDc5IJ-WSWGGK2t-mKTFObSsskrXaJfvlRvYgaXosBQUSUxR5o7dd3ke_b2N_Gv-LOC5cmlrgOuH-kJBzYEkm-cskj1qptNuVO8FtMSvErdorHAKcWV1GJuXyua9cd2qGPTLt7PDp3pTj6dRhRkw1XdKuXGPa8IHYNtTVWhUHOkgbC9atSLrWVTN6KvNVibJ7A2lO5fsbgag0_h1aQuPVLqySOJp8Q8PKcZK1ySzi7Ktp_dFOlI4wdnegQPfElBCJbmp_gTApEYpdOq">
+      <span class="badge-copy">
+        <span>AVAILABLE IN THE</span>
+        <span>chrome web store</span>
+      </span>
+    </div>
+  </main>
+</body>
+</html>

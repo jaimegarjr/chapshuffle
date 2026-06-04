@@ -20,32 +20,19 @@
         min-height: 100vh;
       }
 
-      body::before {
-        content: '';
+      #vanta-bg {
         position: fixed;
         inset: 0;
-        background-image:
-          linear-gradient(rgba(204, 0, 0, 0.04) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(204, 0, 0, 0.04) 1px, transparent 1px);
-        background-size: 40px 40px;
-        pointer-events: none;
         z-index: -1;
-      }
-
-      .glow {
-        position: fixed;
-        width: 600px;
-        height: 600px;
-        background: radial-gradient(circle, rgba(204, 0, 0, 0.1) 0%, transparent 70%);
-        top: -150px;
-        right: -150px;
-        pointer-events: none;
-        z-index: -1;
+        opacity: 0.85;
+        filter: saturate(0.75);
       }
 
       .container {
         max-width: 900px;
         margin: 0 auto;
+        position: relative;
+        z-index: 1;
       }
 
       header {
@@ -363,7 +350,7 @@
     </style>
   </head>
   <body>
-    <div class="glow"></div>
+    <div id="vanta-bg"></div>
     <div class="container">
       <header>
         <div class="brand-lockup">
@@ -448,5 +435,22 @@
       </div>
 
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.fog.min.js"></script>
+    <script>
+      VANTA.FOG({
+        el: '#vanta-bg',
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        highlightColor: 0xff4444,
+        midtoneColor: 0xcc0000,
+        lowlightColor: 0x660000,
+        baseColor: 0x0f0f0f,
+        blurFactor: 0.9,
+        speed: 0.8,
+        zoom: 0.2,
+      });
+    </script>
   </body>
 </html>

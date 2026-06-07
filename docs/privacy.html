@@ -7,6 +7,13 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-48.png" />
     <style>
+      @keyframes page-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+      }
+
       *,
       *::before,
       *::after {
@@ -23,6 +30,15 @@
         color: #e8e8e8;
         padding: 68px 32px 96px;
         min-height: 100vh;
+        animation: page-in 260ms ease-out both;
+        transition:
+          opacity 180ms ease-in,
+          transform 180ms ease-in;
+      }
+
+      body.is-leaving {
+        opacity: 0;
+        transform: translateY(-8px);
       }
 
       #vanta-bg {
@@ -171,6 +187,13 @@
 
       footer a:hover {
         color: rgba(255, 255, 255, 0.55);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        body {
+          animation: none;
+          transition: none;
+        }
       }
 
       @media (max-width: 700px) {
@@ -325,6 +348,7 @@
         Last updated: May 2026 &nbsp;·&nbsp; <a href="./index.html">Back to Chap Shuffle</a>
       </footer>
     </div>
+    <script src="./assets/page-transitions.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.fog.min.js"></script>
     <script>

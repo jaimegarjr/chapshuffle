@@ -40,9 +40,6 @@ format-check:
 # Base CI lane: static checks, unit tests, and a production build
 ci: typecheck format-check test build
 
-# Expanded CI lane with the end-to-end browser suite
-ci-e2e: ci e2e-test
-
 # Package dist/ into a zip ready for Chrome Web Store upload
 zip: ci
     bin/zip

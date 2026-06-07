@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+MODE=${1:-headless}
+TARGET=${2:-}
+
+case "$MODE" in
+  headless | debug) ;;
+  *)
+    echo "Usage: bin/e2e-test [headless|debug] [test name or spec path]" >&2
+    exit 1
+    ;;
+esac
+
+cd "$REPO_ROOT"
+yarn build:prod
+
+TEST_ARGS=()
+if [[ -n "$TARGET" ]]; then
+  if [[ "$TARGET" == *.spec.ts || "$TARGET" == tests/* ]]; then
+    TEST_ARGS+=("$TARGET")
+  else
+    TEST_ARGS+=("-g" "$TARGET")
+  fi
+fi
+
+PLAYWRIGHT_ENV=()
+
+# Headless persistent extension contexts are unstable in local macOS Chromium/Chrome.
+# Keep CI headless, but run local macOS E2E sessions headed unless the user explicitly
+# asked for debug mode, which already opts into a visible browser.
+if [[ "$MODE" == "headless" && "${CI:-}" != "true" && "$(uname -s)" == "Darwin" ]]; then
+  echo "bin/e2e-test: local macOS extension runs use headed Chrome because headless persistent contexts crash before tests start." >&2
+  PLAYWRIGHT_ENV+=(PLAYWRIGHT_HEADLESS=false)
+fi
+
+if [[ "$MODE" == "debug" ]]; then
+  if [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+    PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:e2e "${TEST_ARGS[@]}"
+  else
+    PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:e2e
+  fi
+else
+  if [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+    if [[ ${#PLAYWRIGHT_ENV[@]} -gt 0 ]]; then
+      env "${PLAYWRIGHT_ENV[@]}" yarn test:e2e "${TEST_ARGS[@]}"
+    else
+      yarn test:e2e "${TEST_ARGS[@]}"
+    fi
+  else
+    if [[ ${#PLAYWRIGHT_ENV[@]} -gt 0 ]]; then
+      env "${PLAYWRIGHT_ENV[@]}" yarn test:e2e
+    else
+      yarn test:e2e
+    fi
+  fi
+fi

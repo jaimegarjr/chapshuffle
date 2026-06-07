@@ -6,7 +6,7 @@
   "packageManager": "yarn@1.22.22",
   "scripts": {
     "test": "jest",
-    "test:integration": "playwright test",
+    "test:e2e": "playwright test",
     "build": "node build.js",
     "build:prod": "node build.js --prod",
     "watch": "node build.js --watch",

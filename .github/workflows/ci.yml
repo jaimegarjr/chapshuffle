@@ -23,8 +23,5 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@v2
 
-      - name: Install Playwright Chromium
-        run: yarn playwright install --with-deps chromium
-
       - name: CI checks
         run: just ci

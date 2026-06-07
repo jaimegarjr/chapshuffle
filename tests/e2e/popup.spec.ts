@@ -1,14 +1,7 @@
-import { expect, test } from './fixtures';
+import { expect, resetExtensionStorage, test } from './fixtures';
 
 test('popup settings persist across extension page reloads', async ({ page, extensionId }) => {
-  await page.goto(`chrome-extension://${extensionId}/popup.html`);
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        chrome.storage.sync.clear(resolve);
-      })
-  );
-  await page.reload();
+  await resetExtensionStorage(page, extensionId);
 
   const shuffleToggle = page.getByRole('checkbox');
   await expect(shuffleToggle).not.toBeChecked();

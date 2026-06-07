@@ -13,9 +13,9 @@ test:
 test-watch:
     yarn test --watchAll
 
-# Build and run browser tests; pass `debug` for headed Playwright Inspector mode
-integration-test mode="headless":
-    bin/integration-test "{{mode}}"
+# Run end-to-end browser tests; optionally pass `debug` and a test name or spec path
+e2e-test mode="headless" target="":
+    bin/e2e-test "{{mode}}" "{{target}}"
 
 # Type-check without emitting files
 typecheck:
@@ -37,8 +37,11 @@ format:
 format-check:
     yarn format:check
 
-# One-shot: type-check + unit tests + production build + integration tests
-ci: typecheck format-check test integration-test
+# Base CI lane: static checks, unit tests, and a production build
+ci: typecheck format-check test build
+
+# Expanded CI lane with the end-to-end browser suite
+ci-e2e: ci e2e-test
 
 # Package dist/ into a zip ready for Chrome Web Store upload
 zip: ci

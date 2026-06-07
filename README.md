@@ -22,16 +22,3 @@ YouTube video where the chapters can stand on their own.
 
 Chap Shuffle only runs on YouTube and uses minimal permissions: YouTube page
 access to read chapter data and Chrome storage to remember your settings.
-
-## Releasing
-
-1. Run the `Prepare Release` GitHub Actions workflow with version `X.Y.Z`.
-2. Merge the generated `release/X.Y.Z` PR.
-3. Run the `Publish Release` GitHub Actions workflow with version `X.Y.Z`.
-
-`Publish Release` creates the `vX.Y.Z` tag from `main`, builds the release zip,
-and creates the GitHub Release. It can also upload the zip to Chrome Web Store
-without submitting it for review.
-
-If you upload to Chrome Web Store, run `Submit Chrome Web Store` when you are
-ready to submit the latest uploaded package for review.

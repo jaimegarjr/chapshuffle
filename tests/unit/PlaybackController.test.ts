@@ -1,5 +1,5 @@
-import { PlaybackController } from '../src/playback/PlaybackController';
-import type { Chapter } from '../src/types';
+import { PlaybackController } from '../../src/playback/PlaybackController';
+import type { Chapter } from '../../src/types';
 
 const identity = (arr: Chapter[]): Chapter[] => [...arr];
 

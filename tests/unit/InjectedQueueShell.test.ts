@@ -1,5 +1,5 @@
-import { InjectedQueueShell } from '../src/ui/InjectedQueueShell';
-import type { QueuePanelProps } from '../src/ui/QueuePanel';
+import { InjectedQueueShell } from '../../src/ui/InjectedQueueShell';
+import type { QueuePanelProps } from '../../src/ui/QueuePanel';
 
 const chapters = [
   { title: 'Intro', startSeconds: 0 },

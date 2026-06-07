@@ -13,6 +13,10 @@ test:
 test-watch:
     yarn test --watchAll
 
+# Build and run browser tests; pass `debug` for headed Playwright Inspector mode
+integration-test mode="headless":
+    bin/integration-test "{{mode}}"
+
 # Type-check without emitting files
 typecheck:
     yarn tsc --noEmit
@@ -33,17 +37,12 @@ format:
 format-check:
     yarn format:check
 
-# One-shot: type-check + test + production build (debug logs stripped, minified)
-ci: typecheck format-check test
-    yarn build:prod
+# One-shot: type-check + unit tests + production build + integration tests
+ci: typecheck format-check test integration-test
 
 # Package dist/ into a zip ready for Chrome Web Store upload
 zip: ci
-    #!/usr/bin/env bash
-    VERSION=$(node -p "require('./manifest.json').version")
-    rm -f chapshuffle-*.zip
-    cd dist && zip -r ../chapshuffle-v$VERSION.zip .
-    echo "  → chapshuffle-v$VERSION.zip ready for Chrome Web Store upload"
+    bin/zip
 
 # Start the manual release preparation workflow
 # Usage: just release 1.2.3

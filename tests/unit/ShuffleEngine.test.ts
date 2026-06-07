@@ -1,5 +1,5 @@
-import { shuffle, shuffleExcluding } from '../src/shuffle/ShuffleEngine';
-import type { Chapter } from '../src/types';
+import { shuffle, shuffleExcluding } from '../../src/shuffle/ShuffleEngine';
+import type { Chapter } from '../../src/types';
 
 function makeChapters(n: number): Chapter[] {
   return Array.from({ length: n }, (_, i) => ({

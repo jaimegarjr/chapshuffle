@@ -6,14 +6,16 @@
   "packageManager": "yarn@1.22.22",
   "scripts": {
     "test": "jest",
+    "test:integration": "playwright test",
     "build": "node build.js",
     "build:prod": "node build.js --prod",
     "watch": "node build.js --watch",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"src/**/*.{ts,tsx,html,css}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,html,css}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,html,css}\" \"tests/e2e/**/*.{ts,tsx,html}\" playwright.config.ts",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,html,css}\" \"tests/e2e/**/*.{ts,tsx,html}\" playwright.config.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/chrome": "^0.0.287",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.15.21",
@@ -33,7 +35,7 @@
       "^.+\\.tsx?$": "ts-jest"
     },
     "testMatch": [
-      "**/tests/**/*.test.ts"
+      "**/tests/unit/**/*.test.ts"
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",

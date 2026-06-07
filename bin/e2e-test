@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+MODE=${1:-headless}
+TARGET=${2:-}
+
+case "$MODE" in
+  headless | debug) ;;
+  *)
+    echo "Usage: bin/e2e-test [headless|debug] [test name or spec path]" >&2
+    exit 1
+    ;;
+esac
+
+cd "$REPO_ROOT"
+yarn build:prod
+
+TEST_ARGS=()
+if [[ -n "$TARGET" ]]; then
+  if [[ "$TARGET" == *.spec.ts || "$TARGET" == tests/* ]]; then
+    TEST_ARGS+=("$TARGET")
+  else
+    TEST_ARGS+=("-g" "$TARGET")
+  fi
+fi
+
+if [[ "$MODE" == "debug" ]]; then
+  if [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+    PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:e2e "${TEST_ARGS[@]}"
+  else
+    PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:e2e
+  fi
+else
+  if [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+    yarn test:e2e "${TEST_ARGS[@]}"
+  else
+    yarn test:e2e
+  fi
+fi

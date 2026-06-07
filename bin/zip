@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+VERSION=$(node -p "require('$REPO_ROOT/manifest.json').version")
+ZIP_FILE="$REPO_ROOT/chapshuffle-v$VERSION.zip"
+
+rm -f "$ZIP_FILE"
+cd "$REPO_ROOT/dist"
+zip -r "$ZIP_FILE" .
+echo "  → $(basename "$ZIP_FILE") ready for Chrome Web Store upload"

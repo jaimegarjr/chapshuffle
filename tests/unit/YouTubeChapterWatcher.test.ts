@@ -1,5 +1,5 @@
-import { YouTubeChapterWatcher } from '../src/youtube/YouTubeChapterWatcher';
-import type { Chapter } from '../src/types';
+import { YouTubeChapterWatcher } from '../../src/youtube/YouTubeChapterWatcher';
+import type { Chapter } from '../../src/types';
 
 function addChapterItems(root: Element, count: number, prefix = 'Chapter'): void {
   const doc = root.ownerDocument;

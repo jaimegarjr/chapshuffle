@@ -1,4 +1,4 @@
-import { UIInjector } from '../src/ui/UIInjector';
+import { UIInjector } from '../../src/ui/UIInjector';
 
 function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   const store = { ...initialStore };

@@ -11,7 +11,7 @@ import {
   setQueueEndBehavior,
   setShuffleEnabled,
   setTutorialComplete,
-} from '../src/persistence/PersistenceManager';
+} from '../../src/persistence/PersistenceManager';
 
 interface MockStore {
   [key: string]: unknown;

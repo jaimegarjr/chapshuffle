@@ -1,4 +1,4 @@
-import { getExclusions, setExclusions, clearExclusions } from '../src/exclusion/ExclusionManager';
+import { getExclusions, setExclusions, clearExclusions } from '../../src/exclusion/ExclusionManager';
 
 interface MockStore {
   [key: string]: unknown;

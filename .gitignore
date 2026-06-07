@@ -3,3 +3,4 @@ compiled/
 dist/
 .claude/
 .codex/
+test-results/

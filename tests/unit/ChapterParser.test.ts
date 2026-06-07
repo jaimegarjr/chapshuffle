@@ -1,4 +1,4 @@
-import { parse, parseTimestamp } from '../src/parser/ChapterParser';
+import { parse, parseTimestamp } from '../../src/parser/ChapterParser';
 
 interface ChapterFixture {
   title: string;

@@ -1,4 +1,4 @@
-import { TutorialManager } from '../src/ui/Tutorial';
+import { TutorialManager } from '../../src/ui/Tutorial';
 
 function setupDoc(): Document {
   document.body.innerHTML = '';

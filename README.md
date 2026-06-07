@@ -1,6 +1,6 @@
 # Chap Shuffle
 
-![Chap Shuffle banner](docs/assets/banner.png)
+![Chap Shuffle banner](docs/assets/small-promo-tile.png)
 
 Shuffle YouTube video chapters for a randomized viewing experience.
 

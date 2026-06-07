@@ -8,14 +8,13 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-48.png" />
     <style>
-      @keyframes page-in {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -25,15 +24,6 @@
         color: #e8e8e8;
         padding: 68px 32px 96px;
         min-height: 100vh;
-        animation: page-in 260ms ease-out both;
-        transition:
-          opacity 180ms ease-in,
-          transform 180ms ease-in;
-      }
-
-      body.is-leaving {
-        opacity: 0;
-        transform: translateY(-8px);
       }
 
       #vanta-bg {
@@ -114,6 +104,14 @@
         flex-shrink: 0;
       }
 
+      .view-stage {
+        position: relative;
+      }
+
+      .view[hidden] {
+        display: none;
+      }
+
       .hero {
         margin-bottom: 42px;
       }
@@ -165,7 +163,10 @@
         margin-top: 2px;
       }
 
-      .steps strong { color: #fff; font-weight: 600; }
+      .steps strong {
+        color: #fff;
+        font-weight: 600;
+      }
 
       .cards {
         display: grid;
@@ -174,7 +175,9 @@
       }
 
       @media (max-width: 420px) {
-        .cards { grid-template-columns: 1fr; }
+        .cards {
+          grid-template-columns: 1fr;
+        }
       }
 
       .card {
@@ -188,7 +191,9 @@
         border-radius: 10px;
         text-decoration: none;
         color: inherit;
-        transition: background 0.15s, border-color 0.15s;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
       }
 
       a.card:hover {
@@ -242,25 +247,129 @@
         line-height: 1.45;
       }
 
-      footer {
-        margin-top: 58px;
-        padding-top: 26px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.25);
+      .privacy-heading {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 14px;
       }
 
-      footer a {
-        color: rgba(255, 255, 255, 0.35);
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.62);
         text-decoration: none;
-        transition: color 0.15s;
+        transition:
+          color 0.15s,
+          background 0.15s,
+          border-color 0.15s,
+          transform 0.15s;
       }
 
-      footer a:hover { color: rgba(255, 255, 255, 0.55); }
+      .back-link:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.18);
+        transform: translateX(-2px);
+      }
+
+      .back-link:focus-visible {
+        outline: 2px solid #e33;
+        outline-offset: 3px;
+      }
+
+      .back-link svg {
+        width: 16px;
+        height: 16px;
+        transform: translateX(-0.5px);
+      }
+
+      .privacy-content {
+        max-width: 760px;
+      }
+
+      .privacy-title {
+        margin: 0;
+        color: #fff;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-transform: none;
+      }
+
+      .privacy-intro {
+        margin-bottom: 42px;
+        font-size: 21px;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.7;
+      }
+
+      .privacy-content p {
+        color: rgba(255, 255, 255, 0.75);
+        margin-bottom: 14px;
+      }
+
+      .privacy-content h3 {
+        margin: 34px 0 14px;
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .privacy-content ul {
+        list-style: none;
+        margin-bottom: 14px;
+      }
+
+      .privacy-content li {
+        position: relative;
+        margin-bottom: 8px;
+        padding-left: 22px;
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .privacy-content li::before {
+        content: '—';
+        position: absolute;
+        left: 0;
+        color: #cc0000;
+      }
+
+      .privacy-content strong {
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .privacy-content code {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.9em;
+      }
+
+      .privacy-content a:not(.back-link) {
+        color: #e33;
+        text-decoration-color: rgba(238, 51, 51, 0.45);
+        text-underline-offset: 3px;
+        transition:
+          color 0.15s,
+          text-decoration-color 0.15s;
+      }
+
+      .privacy-content a:not(.back-link):hover {
+        color: #ff5c5c;
+        text-decoration-color: currentColor;
+      }
 
       @media (prefers-reduced-motion: reduce) {
-        body {
-          animation: none;
+        .back-link {
           transition: none;
         }
       }
@@ -303,6 +412,14 @@
         }
 
         .hero p {
+          font-size: 19px;
+        }
+
+        .privacy-title {
+          font-size: 26px;
+        }
+
+        .privacy-intro {
           font-size: 19px;
         }
 
@@ -357,6 +474,14 @@
           font-size: 17px;
         }
 
+        .privacy-title {
+          font-size: 22px;
+        }
+
+        .privacy-intro {
+          font-size: 17px;
+        }
+
         .card {
           min-height: 92px;
           padding: 20px;
@@ -396,7 +521,12 @@
           </svg>
           <div>
             <h1>Chap Shuffle</h1>
-            <a class="header-byline" href="https://github.com/jaimegarjr" target="_blank" rel="noopener">
+            <a
+              class="header-byline"
+              href="https://github.com/jaimegarjr"
+              target="_blank"
+              rel="noopener"
+            >
               by
               <svg class="github-icon" viewBox="0 0 16 16" aria-hidden="true">
                 <path
@@ -410,53 +540,119 @@
         <img class="header-art" src="./assets/small-promo-tile.png" alt="Chap Shuffle preview" />
       </header>
 
-      <div class="hero">
-        <p>
-          Chap Shuffle adds a shuffle button directly to the YouTube player. On any video with
-          5 or more chapters, click it to randomize the queue and auto-advance through chapters
-          like tracks on an album — great for soundtracks, long-form mixes, compilations, and
-          anything where the chapters stand on their own.
-        </p>
-      </div>
+      <main class="view-stage">
+        <section class="view" data-view="home" aria-labelledby="home-heading">
+          <div class="hero">
+            <p id="home-heading">
+              Chap Shuffle adds a shuffle button directly to the YouTube player. On any video with 5
+              or more chapters, click it to randomize the queue and auto-advance through chapters
+              like tracks on an album — great for soundtracks, long-form mixes, compilations, and
+              anything where the chapters stand on their own.
+            </p>
+          </div>
 
-      <h2>Get started</h2>
-      <div class="cards">
-        <a
-          href="https://youtu.be/pgQRcqh1u7U?si=Lr3z9mngUE3QawhT"
-          class="card card-cta"
-          target="_blank"
-          rel="noopener"
-        >
-          <span class="card-title">▶ Try it out</span>
-          <span class="card-sub">Open a video with chapters to test with</span>
-        </a>
-        <a
-          href="https://ko-fi.com/jaimegarjr"
-          class="card card-donate"
-          target="_blank"
-          rel="noopener"
-        >
-          <span class="card-title">
-            <img class="card-icon" src="./assets/kofi-icon.svg" alt="" />
-            Support development
-          </span>
-          <span class="card-sub">ko-fi.com/jaimegarjr</span>
-        </a>
-        <a href="./privacy.html" class="card">
-          <span class="card-title">§ Privacy policy</span>
-          <span class="card-sub">No data collected, ever</span>
-        </a>
-        <a
-          href="https://github.com/jaimegarjr/chapshuffle"
-          class="card"
-          target="_blank"
-          rel="noopener"
-        >
-          <span class="card-title">⌥ Source code</span>
-          <span class="card-sub">github.com/jaimegarjr/chapshuffle</span>
-        </a>
-      </div>
+          <h2>Get started</h2>
+          <div class="cards">
+            <a
+              href="https://youtu.be/pgQRcqh1u7U?si=Lr3z9mngUE3QawhT"
+              class="card card-cta"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="card-title">▶ Try it out</span>
+              <span class="card-sub">Open a video with chapters to test with</span>
+            </a>
+            <a
+              href="https://ko-fi.com/jaimegarjr"
+              class="card card-donate"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="card-title">
+                <img class="card-icon" src="./assets/kofi-icon.svg" alt="" />
+                Support development
+              </span>
+              <span class="card-sub">ko-fi.com/jaimegarjr</span>
+            </a>
+            <a href="#privacy" class="card" data-route="privacy">
+              <span class="card-title">§ Privacy policy</span>
+              <span class="card-sub">No data collected, ever</span>
+            </a>
+            <a
+              href="https://github.com/jaimegarjr/chapshuffle"
+              class="card"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="card-title">⌥ Source code</span>
+              <span class="card-sub">github.com/jaimegarjr/chapshuffle</span>
+            </a>
+          </div>
+        </section>
 
+        <section
+          class="view privacy-content"
+          data-view="privacy"
+          aria-labelledby="privacy-heading"
+          hidden
+        >
+          <div class="privacy-heading">
+            <a class="back-link" href="#home" data-route="home" aria-label="Back to Chap Shuffle">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M19 12H5m7 7-7-7 7-7" />
+              </svg>
+            </a>
+            <h2 class="privacy-title" id="privacy-heading" tabindex="-1">Privacy Policy</h2>
+          </div>
+          <p class="privacy-intro">
+            Chap Shuffle is a Chrome extension that shuffles YouTube video chapters for a randomized
+            viewing experience. This policy describes how the extension handles your data.
+          </p>
+
+          <h3>Data collection</h3>
+          <p>Chap Shuffle does not collect, transmit, or share any personal data. The extension:</p>
+          <ul>
+            <li>Does not make any network requests</li>
+            <li>Does not track your browsing activity</li>
+            <li>Does not collect analytics or usage data</li>
+            <li>Does not share any information with third parties</li>
+          </ul>
+
+          <h3>Local storage</h3>
+          <p>
+            The extension saves your preferences (shuffle enabled, minimum chapters, queue end
+            behavior) using Chrome's built-in <code>chrome.storage.sync</code> API. This data is
+            stored locally in your browser and synced across your Chrome profile by Google — it is
+            never accessed by us.
+          </p>
+
+          <h3>Permissions</h3>
+          <p>Chap Shuffle requests the following permissions:</p>
+          <ul>
+            <li><strong>activeTab</strong> — to read chapter data from the current YouTube page</li>
+            <li><strong>storage</strong> — to save your extension preferences</li>
+            <li><strong>tabs</strong> — to open the onboarding site once after installation</li>
+            <li>
+              <strong>youtube.com access</strong> — to inject the shuffle controls into the YouTube
+              player
+            </li>
+          </ul>
+
+          <h3>Contact</h3>
+          <p>
+            If you have any questions about this policy, you can open an issue on the
+            <a href="https://github.com/jaimegarjr/chapshuffle">GitHub repository</a>.
+          </p>
+        </section>
+      </main>
     </div>
     <script src="./assets/page-transitions.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>

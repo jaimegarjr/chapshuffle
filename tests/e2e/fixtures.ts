@@ -49,6 +49,21 @@ export async function dismissYouTubeAd(page: Page): Promise<void> {
   await expect(player).not.toHaveClass(/ad-showing/, { timeout: 5_000 });
 }
 
+export async function wakeYouTubePlayerControls(page: Page): Promise<void> {
+  const player = page.locator('#movie_player.html5-video-player');
+  await expect(player).toBeVisible({ timeout: 60_000 });
+
+  await player.evaluate((element) => {
+    element.classList.remove('ytp-autohide');
+    element.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+  });
+
+  const box = await player.boundingBox();
+  if (box) {
+    await page.mouse.move(box.x + box.width - 32, box.y + box.height - 32);
+  }
+}
+
 export async function resetExtensionStorage(
   page: Page,
   extensionId: string,
@@ -72,11 +87,13 @@ export async function resetExtensionStorage(
 export async function openChapteredVideo(page: Page): Promise<void> {
   await page.goto(YOUTUBE_VIDEO_URL, { waitUntil: 'domcontentloaded' });
   await dismissYouTubeAd(page);
+  await wakeYouTubePlayerControls(page);
   await expect(page.locator('#chapshuffle-btn')).toBeVisible({ timeout: 60_000 });
 }
 
 export async function openQueue(page: Page): Promise<void> {
   const toggle = page.locator('#chapshuffle-btn');
+  await wakeYouTubePlayerControls(page);
   await toggle.click();
   await expect(page.locator('#chapshuffle-queue')).toBeVisible();
 }

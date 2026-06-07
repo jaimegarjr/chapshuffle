@@ -29,7 +29,7 @@ jobs:
       - name: Run E2E suite
         id: e2e
         continue-on-error: true
-        run: just ci-e2e
+        run: just e2e-test
 
       - name: Upload Playwright artifacts
         if: always()

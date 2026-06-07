@@ -33,7 +33,13 @@ export class SessionController {
     this._video = video;
     this._allChapters = chapters;
     this._videoId = videoId;
-    this._controller = new PlaybackController(video, chapters, undefined, autoAdvance, queueEndBehavior);
+    this._controller = new PlaybackController(
+      video,
+      chapters,
+      undefined,
+      autoAdvance,
+      queueEndBehavior
+    );
     this._boundOnUpdate = onUpdate;
     video.addEventListener('timeupdate', this._boundOnUpdate);
   }

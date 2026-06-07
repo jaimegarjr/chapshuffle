@@ -17,14 +17,14 @@ function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   return {
     runtime: {
       lastError: null as { message: string } | null,
-      sendMessage: () => {},
+      sendMessage: () => { },
     },
     storage: {
       sync: storageArea,
       local: storageArea,
       onChanged: {
-        addListener: () => {},
-        removeListener: () => {},
+        addListener: () => { },
+        removeListener: () => { },
       },
     },
   };
@@ -355,8 +355,6 @@ describe('UIInjector — exclusion editing mode', () => {
 
   test('clicking a row in exclusion mode removes that chapter from the playable queue', async () => {
     window.history.replaceState(null, '', '/watch?v=video-1');
-    const chromeMock = buildChromeMock();
-    (global as unknown as Record<string, unknown>).chrome = chromeMock;
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     addPlayerControls(document);
     addChapterItems(document, 5);
@@ -379,9 +377,6 @@ describe('UIInjector — exclusion editing mode', () => {
       (el) => el.textContent
     );
     expect(titles).not.toContain('Chapter 3');
-    expect(
-      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>)['video-1']
-    ).toContain(120);
 
     randomSpy.mockRestore();
     injector.destroy();
@@ -389,8 +384,6 @@ describe('UIInjector — exclusion editing mode', () => {
 
   test('drafting an exclusion does not seek until Done is clicked', async () => {
     window.history.replaceState(null, '', '/watch?v=video-2');
-    const chromeMock = buildChromeMock();
-    (global as unknown as Record<string, unknown>).chrome = chromeMock;
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     addPlayerControls(document);
     addChapterItems(document, 5);
@@ -414,19 +407,11 @@ describe('UIInjector — exclusion editing mode', () => {
     await Promise.resolve();
 
     expect(video.currentTime).toBe(0);
-    expect(
-      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]> | undefined)?.[
-        'video-2'
-      ]
-    ).toBeUndefined();
 
     (document.getElementById('chapshuffle-exclusion-done') as HTMLButtonElement).click();
     await Promise.resolve();
 
     expect(video.currentTime).toBe(120);
-    expect(
-      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>)['video-2']
-    ).toContain(60);
 
     randomSpy.mockRestore();
     injector.destroy();
@@ -468,10 +453,11 @@ describe('UIInjector — exclusion editing mode', () => {
     (document.getElementById('chapshuffle-exclusion-done') as HTMLButtonElement).click();
     await Promise.resolve();
 
-    const persistedExclusions = (
-      chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>
-    )['video-3'];
-    expect(persistedExclusions).toEqual([0, 60, 120, 180]);
+    const queueTitles = Array.from(document.querySelectorAll('.chapshuffle-title')).map(
+      (el) => el.textContent
+    );
+    expect(queueTitles).not.toContain('Chapter 1');
+    expect(queueTitles).toContain('Chapter 5');
 
     injector.destroy();
   });

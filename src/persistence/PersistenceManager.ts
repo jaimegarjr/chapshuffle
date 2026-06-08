@@ -21,6 +21,13 @@ export const DEFAULT_SETTINGS: Settings = {
 type SettingsKey = keyof Settings;
 type SettingsStorageKey = (typeof SETTINGS_KEYS)[SettingsKey];
 type RawSettings = Partial<Record<SettingsStorageKey, unknown>>;
+type SettingsListener = (changes: Partial<Settings>) => void;
+
+export interface SettingsModule {
+  read(): Promise<Settings>;
+  update(changes: Partial<Settings>): Promise<void>;
+  subscribe(listener: SettingsListener): () => void;
+}
 
 function storageError(): Error {
   return new Error(chrome.runtime.lastError?.message ?? 'Unknown chrome storage error');
@@ -42,7 +49,7 @@ export function normalizeSettings(raw: RawSettings): Settings {
   };
 }
 
-export function settingsChangeFromChrome(changes: {
+function normalizeSettingsChange(changes: {
   [key: string]: chrome.storage.StorageChange;
 }): Partial<Settings> {
   const settingsChange: Partial<Settings> = {};
@@ -84,7 +91,7 @@ function writeSettings(settings: RawSettings): Promise<void> {
   });
 }
 
-export async function getSettings(): Promise<Settings> {
+async function readAllSettings(): Promise<Settings> {
   return normalizeSettings(
     await readSettings([
       SETTINGS_KEYS.shuffleEnabled,
@@ -94,29 +101,41 @@ export async function getSettings(): Promise<Settings> {
   );
 }
 
-export async function getShuffleEnabled(): Promise<boolean> {
-  return (await getSettings()).shuffleEnabled;
+function normalizeSettingsUpdate(changes: Partial<Settings>): RawSettings {
+  const normalized: RawSettings = {};
+  if (changes.shuffleEnabled !== undefined) {
+    normalized[SETTINGS_KEYS.shuffleEnabled] = changes.shuffleEnabled === true;
+  }
+  if (changes.minChapters !== undefined) {
+    normalized[SETTINGS_KEYS.minChapters] = normalizeMinChapters(changes.minChapters);
+  }
+  if (changes.queueEndBehavior !== undefined) {
+    normalized[SETTINGS_KEYS.queueEndBehavior] = normalizeQueueEndBehavior(
+      changes.queueEndBehavior
+    );
+  }
+  return normalized;
 }
 
-export async function getMinChapters(): Promise<number> {
-  return (await getSettings()).minChapters;
-}
+export const settings: SettingsModule = {
+  read: readAllSettings,
+  update(changes) {
+    return writeSettings(normalizeSettingsUpdate(changes));
+  },
+  subscribe(listener) {
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ): void => {
+      if (areaName !== 'sync') return;
+      const normalized = normalizeSettingsChange(changes);
+      if (Object.keys(normalized).length > 0) listener(normalized);
+    };
 
-export function setMinChapters(value: number): Promise<void> {
-  return writeSettings({ [SETTINGS_KEYS.minChapters]: value });
-}
-
-export async function getQueueEndBehavior(): Promise<QueueEndBehavior> {
-  return (await getSettings()).queueEndBehavior;
-}
-
-export function setQueueEndBehavior(value: QueueEndBehavior): Promise<void> {
-  return writeSettings({ [SETTINGS_KEYS.queueEndBehavior]: value });
-}
-
-export function setShuffleEnabled(value: boolean): Promise<void> {
-  return writeSettings({ [SETTINGS_KEYS.shuffleEnabled]: Boolean(value) });
-}
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  },
+};
 
 export const TUTORIAL_COMPLETE_KEY = 'tutorialComplete';
 

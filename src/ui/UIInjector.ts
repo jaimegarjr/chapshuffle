@@ -2,11 +2,11 @@ import type { Chapter } from '../types';
 import { SessionController } from '../playback/SessionController';
 import {
   DEFAULT_SETTINGS,
-  getSettings,
   getTutorialComplete,
+  settings,
   setTutorialComplete,
-  settingsChangeFromChrome,
   type QueueEndBehavior,
+  type Settings,
 } from '../persistence/PersistenceManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
@@ -24,22 +24,19 @@ export class UIInjector {
   private _queueEndBehavior: QueueEndBehavior = DEFAULT_SETTINGS.queueEndBehavior;
   private _tutorial: TutorialManager | null = null;
   private _sessionGeneration = 0;
-  private readonly _boundStorageChange: (changes: {
-    [key: string]: chrome.storage.StorageChange;
-  }) => void;
+  private _unsubscribeSettings: (() => void) | null = null;
 
   constructor(doc: Document = document) {
     this._doc = doc;
     this._shell = new InjectedQueueShell(doc, () => this._renderPanel());
-    this._boundStorageChange = this._onStorageChange.bind(this);
   }
 
   async init(): Promise<void> {
-    const settings = await getSettings();
-    this._autoAdvance = settings.shuffleEnabled;
-    this._minChapters = settings.minChapters;
-    this._queueEndBehavior = settings.queueEndBehavior;
-    chrome.storage.onChanged.addListener(this._boundStorageChange);
+    const initialSettings = await settings.read();
+    this._autoAdvance = initialSettings.shuffleEnabled;
+    this._minChapters = initialSettings.minChapters;
+    this._queueEndBehavior = initialSettings.queueEndBehavior;
+    this._unsubscribeSettings = settings.subscribe((changes) => this._onSettingsChange(changes));
     this._shell.injectStyles();
     this._watcher = new YouTubeChapterWatcher(this._doc, {
       minChapters: this._minChapters,
@@ -51,9 +48,8 @@ export class UIInjector {
     this._watcher.start();
   }
 
-  private _onStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
-    const settingsChange = settingsChangeFromChrome(changes);
-    const { shuffleEnabled, queueEndBehavior, minChapters } = settingsChange;
+  private _onSettingsChange(changes: Partial<Settings>): void {
+    const { shuffleEnabled, queueEndBehavior, minChapters } = changes;
 
     if (shuffleEnabled !== undefined) {
       this._autoAdvance = shuffleEnabled;
@@ -179,7 +175,8 @@ export class UIInjector {
   destroy(): void {
     this._watcher?.destroy();
     this._watcher = null;
-    chrome.storage.onChanged.removeListener(this._boundStorageChange);
+    this._unsubscribeSettings?.();
+    this._unsubscribeSettings = null;
     this._tutorial?.destroy();
     this._tutorial = null;
     this._resetInjectedState();

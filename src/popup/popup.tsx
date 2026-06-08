@@ -2,10 +2,7 @@ import { render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import {
   DEFAULT_SETTINGS,
-  getSettings,
-  setShuffleEnabled,
-  setMinChapters,
-  setQueueEndBehavior,
+  settings,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
 
@@ -17,28 +14,28 @@ function App() {
   );
 
   useEffect(() => {
-    getSettings().then((settings) => {
-      setEnabled(settings.shuffleEnabled);
-      setMinChaptersState(settings.minChapters);
-      setQueueEndState(settings.queueEndBehavior);
+    settings.read().then((initialSettings) => {
+      setEnabled(initialSettings.shuffleEnabled);
+      setMinChaptersState(initialSettings.minChapters);
+      setQueueEndState(initialSettings.queueEndBehavior);
     });
   }, []);
 
   const handleToggle = (e: Event) => {
     const checked = (e.target as HTMLInputElement).checked;
     setEnabled(checked);
-    setShuffleEnabled(checked);
+    settings.update({ shuffleEnabled: checked });
   };
 
   const handleStepper = (delta: number) => {
     const next = Math.min(10, Math.max(2, minChapters + delta));
     setMinChaptersState(next);
-    setMinChapters(next);
+    settings.update({ minChapters: next });
   };
 
   const handleQueueEnd = (value: QueueEndBehavior) => {
     setQueueEndState(value);
-    setQueueEndBehavior(value);
+    settings.update({ queueEndBehavior: value });
   };
 
   return (

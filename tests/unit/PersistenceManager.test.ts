@@ -1,16 +1,10 @@
 import {
   DEFAULT_SETTINGS,
-  getMinChapters,
-  getQueueEndBehavior,
-  getSettings,
-  getShuffleEnabled,
   getTutorialComplete,
   normalizeSettings,
-  settingsChangeFromChrome,
-  setMinChapters,
-  setQueueEndBehavior,
-  setShuffleEnabled,
+  settings,
   setTutorialComplete,
+  type QueueEndBehavior,
 } from '../../src/persistence/PersistenceManager';
 
 interface MockStore {
@@ -19,6 +13,9 @@ interface MockStore {
 
 function buildChromeMock(initialStore: MockStore = {}) {
   const store: MockStore = { ...initialStore };
+  const changeListeners = new Set<
+    (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void
+  >();
   return {
     runtime: { lastError: null as { message: string } | null },
     storage: {
@@ -35,6 +32,27 @@ function buildChromeMock(initialStore: MockStore = {}) {
           callback();
         },
         _store: store,
+      },
+      onChanged: {
+        addListener(
+          listener: (
+            changes: { [key: string]: chrome.storage.StorageChange },
+            areaName: string
+          ) => void
+        ) {
+          changeListeners.add(listener);
+        },
+        removeListener(
+          listener: (
+            changes: { [key: string]: chrome.storage.StorageChange },
+            areaName: string
+          ) => void
+        ) {
+          changeListeners.delete(listener);
+        },
+        emit(changes: { [key: string]: chrome.storage.StorageChange }, areaName = 'sync') {
+          for (const listener of changeListeners) listener(changes, areaName);
+        },
       },
     },
   };
@@ -80,22 +98,39 @@ describe('PersistenceManager.normalizeSettings()', () => {
   });
 });
 
-describe('PersistenceManager.settingsChangeFromChrome()', () => {
-  test('returns only changed settings using storage normalization', () => {
-    const changes = settingsChangeFromChrome({
+describe('PersistenceManager.settings.subscribe()', () => {
+  test('emits normalized sync changes and stops after unsubscribe', () => {
+    const listener = jest.fn();
+    const unsubscribe = settings.subscribe(listener);
+    const chromeMock = (global as unknown as Record<string, ReturnType<typeof buildChromeMock>>)
+      .chrome;
+
+    chromeMock.storage.onChanged.emit({
       shuffleEnabled: { oldValue: false, newValue: true },
       minChapters: { oldValue: 7, newValue: 1 },
       unrelated: { oldValue: 'old', newValue: 'new' },
     });
 
-    expect(changes).toEqual({
+    expect(listener).toHaveBeenCalledWith({
       shuffleEnabled: true,
       minChapters: DEFAULT_SETTINGS.minChapters,
     });
+
+    chromeMock.storage.onChanged.emit(
+      { shuffleEnabled: { oldValue: true, newValue: false } },
+      'local'
+    );
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    chromeMock.storage.onChanged.emit({
+      shuffleEnabled: { oldValue: true, newValue: false },
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('PersistenceManager.getSettings()', () => {
+describe('PersistenceManager.settings.read()', () => {
   test('reads and normalizes all settings in one call', async () => {
     (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
       shuffleEnabled: true,
@@ -103,77 +138,42 @@ describe('PersistenceManager.getSettings()', () => {
       queueEndBehavior: 'end-video',
     });
 
-    expect(await getSettings()).toEqual({
+    expect(await settings.read()).toEqual({
       shuffleEnabled: true,
       minChapters: 8,
       queueEndBehavior: 'end-video',
     });
   });
+
+  test('applies defaults to missing and invalid values', async () => {
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
+      shuffleEnabled: 'true',
+      minChapters: 1,
+      queueEndBehavior: 'loop',
+    });
+    expect(await settings.read()).toEqual(DEFAULT_SETTINGS);
+  });
 });
 
-describe('PersistenceManager.getShuffleEnabled()', () => {
-  test('defaults to false when storage is empty', async () => {
-    expect(await getShuffleEnabled()).toBe(false);
-  });
-
-  test('returns true when previously set to true', async () => {
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
+describe('PersistenceManager.settings.update()', () => {
+  test('writes a partial settings update', async () => {
+    await settings.update({
       shuffleEnabled: true,
-    });
-    expect(await getShuffleEnabled()).toBe(true);
-  });
-
-  test('returns false when stored value is false', async () => {
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
-      shuffleEnabled: false,
-    });
-    expect(await getShuffleEnabled()).toBe(false);
-  });
-});
-
-describe('PersistenceManager.setShuffleEnabled()', () => {
-  test('round-trips: set then get returns same value', async () => {
-    await setShuffleEnabled(true);
-    expect(await getShuffleEnabled()).toBe(true);
-    await setShuffleEnabled(false);
-    expect(await getShuffleEnabled()).toBe(false);
-  });
-});
-
-describe('PersistenceManager.getMinChapters()', () => {
-  test('defaults to 5 when storage is empty or below minimum', async () => {
-    expect(await getMinChapters()).toBe(5);
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ minChapters: 1 });
-    expect(await getMinChapters()).toBe(5);
-  });
-
-  test('returns stored values at or above 2', async () => {
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ minChapters: 2 });
-    expect(await getMinChapters()).toBe(2);
-  });
-});
-
-describe('PersistenceManager.setMinChapters()', () => {
-  test('writes the selected threshold to storage', async () => {
-    await setMinChapters(7);
-    expect(chromeStore().minChapters).toBe(7);
-  });
-});
-
-describe('PersistenceManager.getQueueEndBehavior()', () => {
-  test('defaults to reshuffle unless storage explicitly contains end-video', async () => {
-    expect(await getQueueEndBehavior()).toBe('reshuffle');
-    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
+      minChapters: 7,
       queueEndBehavior: 'end-video',
     });
-    expect(await getQueueEndBehavior()).toBe('end-video');
-  });
-});
-
-describe('PersistenceManager.setQueueEndBehavior()', () => {
-  test('writes the selected queue-end behavior to storage', async () => {
-    await setQueueEndBehavior('end-video');
+    expect(chromeStore().shuffleEnabled).toBe(true);
+    expect(chromeStore().minChapters).toBe(7);
     expect(chromeStore().queueEndBehavior).toBe('end-video');
+  });
+
+  test('normalizes invalid values before writing', async () => {
+    await settings.update({
+      minChapters: 1,
+      queueEndBehavior: 'invalid' as QueueEndBehavior,
+    });
+    expect(chromeStore().minChapters).toBe(DEFAULT_SETTINGS.minChapters);
+    expect(chromeStore().queueEndBehavior).toBe(DEFAULT_SETTINGS.queueEndBehavior);
   });
 });
 

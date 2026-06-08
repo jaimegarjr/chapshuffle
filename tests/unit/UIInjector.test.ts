@@ -2,6 +2,9 @@ import { UIInjector } from '../../src/ui/UIInjector';
 
 function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   const store = { ...initialStore };
+  const changeListeners = new Set<
+    (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void
+  >();
   const storageArea = {
     get: (keys: string[], cb: (r: Record<string, unknown>) => void) => {
       const result: Record<string, unknown> = {};
@@ -23,8 +26,25 @@ function buildChromeMock(initialStore: Record<string, unknown> = {}) {
       sync: storageArea,
       local: storageArea,
       onChanged: {
-        addListener: () => {},
-        removeListener: () => {},
+        addListener(
+          listener: (
+            changes: { [key: string]: chrome.storage.StorageChange },
+            areaName: string
+          ) => void
+        ) {
+          changeListeners.add(listener);
+        },
+        removeListener(
+          listener: (
+            changes: { [key: string]: chrome.storage.StorageChange },
+            areaName: string
+          ) => void
+        ) {
+          changeListeners.delete(listener);
+        },
+        emit(changes: { [key: string]: chrome.storage.StorageChange }, areaName = 'sync') {
+          for (const listener of changeListeners) listener(changes, areaName);
+        },
       },
     },
   };
@@ -120,6 +140,27 @@ describe('UIInjector — injection guard', () => {
 
     expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
     expect(document.querySelectorAll('.chapshuffle-item')).toHaveLength(2);
+    injector.destroy();
+  });
+
+  test('re-evaluates the current video when the activation threshold setting changes', async () => {
+    const chromeMock = buildChromeMock();
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+    addPlayerControls(document);
+    addChapterItems(document, 4);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+
+    await injector.init();
+    await flushAll();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+
+    chromeMock.storage.onChanged.emit({
+      minChapters: { oldValue: 5, newValue: 4 },
+    });
+    await flushAll();
+
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
     injector.destroy();
   });
 

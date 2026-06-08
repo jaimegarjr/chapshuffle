@@ -27,7 +27,11 @@ if [[ -n "$TARGET" ]]; then
 fi
 
 if [[ "$MODE" == "debug" ]]; then
-  PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:integration "${TEST_ARGS[@]}"
+  if [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+    PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:integration "${TEST_ARGS[@]}"
+  else
+    PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:integration
+  fi
 elif [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
   yarn test:integration "${TEST_ARGS[@]}"
 else

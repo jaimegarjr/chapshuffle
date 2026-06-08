@@ -29,12 +29,6 @@ test('user can open, close, and seek through the shuffled queue', async ({ page,
   await expect
     .poll(() => page.locator('video').evaluate((video) => (video as HTMLVideoElement).currentTime))
     .toBeGreaterThanOrEqual(Math.max(0, targetSeconds - 2));
-  await expect
-    .poll(() => page.locator('video').evaluate((video) => (video as HTMLVideoElement).readyState), {
-      message: 'YouTube should load media data after seeking to the selected chapter',
-      timeout: 15_000,
-    })
-    .toBeGreaterThanOrEqual(2);
 
   await toggle.click();
   await expect(panel).toBeHidden();

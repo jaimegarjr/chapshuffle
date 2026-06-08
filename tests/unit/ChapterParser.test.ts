@@ -45,8 +45,11 @@ describe('ChapterParser.parse()', () => {
     expect(result![4]).toEqual({ title: 'Outro', startSeconds: 1200 });
   });
 
-  test('returns null when fewer than 5 chapters are present', () => {
-    expect(parse(buildChapterDOM(FIVE_CHAPTERS.slice(0, 4)))).toBeNull();
+  test('parses a valid chapter list independently of the activation threshold', () => {
+    expect(parse(buildChapterDOM(FIVE_CHAPTERS.slice(0, 2)))).toEqual([
+      { title: 'Intro', startSeconds: 0 },
+      { title: 'Setup', startSeconds: 90 },
+    ]);
   });
 
   test('returns null when no chapters exist', () => {

@@ -25,6 +25,7 @@ export class YouTubeChapterWatcher {
   private readonly _onLivestream: () => void;
   private readonly _boundNavigateFinish: () => void;
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
+  private _started = false;
 
   constructor(doc: Document, options: YouTubeChapterWatcherOptions) {
     this._doc = doc;
@@ -37,15 +38,20 @@ export class YouTubeChapterWatcher {
   }
 
   start(): void {
+    if (this._started) return;
+    this._started = true;
     this._doc.addEventListener('yt-navigate-finish', this._boundNavigateFinish);
     this._startPoll();
   }
 
   set minChapters(value: number) {
+    if (value === this._minChapters) return;
     this._minChapters = value;
+    if (this._started) this._startPoll();
   }
 
   destroy(): void {
+    this._started = false;
     this._doc.removeEventListener('yt-navigate-finish', this._boundNavigateFinish);
     this._stopPoll();
   }

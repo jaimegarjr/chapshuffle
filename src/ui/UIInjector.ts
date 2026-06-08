@@ -1,15 +1,13 @@
 import type { Chapter } from '../types';
-import { parse as parseChapters } from '../parser/ChapterParser';
-import { PlaybackController } from '../playback/PlaybackController';
+import { SessionController } from '../playback/SessionController';
 import {
   DEFAULT_SETTINGS,
-  getSettings,
   getTutorialComplete,
+  settings,
   setTutorialComplete,
-  settingsChangeFromChrome,
   type QueueEndBehavior,
+  type Settings,
 } from '../persistence/PersistenceManager';
-import { getExclusions, setExclusions } from '../exclusion/ExclusionManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
@@ -20,34 +18,25 @@ export class UIInjector {
   private readonly _doc: Document;
   private readonly _shell: InjectedQueueShell;
   private _watcher: YouTubeChapterWatcher | null = null;
-  private _controller: PlaybackController | null = null;
-  private _video: HTMLVideoElement | null = null;
+  private _session: SessionController | null = null;
   private _autoAdvance = DEFAULT_SETTINGS.shuffleEnabled;
   private _minChapters = DEFAULT_SETTINGS.minChapters;
   private _queueEndBehavior: QueueEndBehavior = DEFAULT_SETTINGS.queueEndBehavior;
-  private _loopMode = false;
   private _tutorial: TutorialManager | null = null;
-  private _videoId: string | null = null;
-  private _excluded: Set<number> = new Set();
-  private _allChapters: Chapter[] = [];
-  private readonly _boundHighlightUpdate: () => void;
-  private readonly _boundStorageChange: (changes: {
-    [key: string]: chrome.storage.StorageChange;
-  }) => void;
+  private _sessionGeneration = 0;
+  private _unsubscribeSettings: (() => void) | null = null;
 
   constructor(doc: Document = document) {
     this._doc = doc;
     this._shell = new InjectedQueueShell(doc, () => this._renderPanel());
-    this._boundHighlightUpdate = this._renderPanel.bind(this);
-    this._boundStorageChange = this._onStorageChange.bind(this);
   }
 
   async init(): Promise<void> {
-    const settings = await getSettings();
-    this._autoAdvance = settings.shuffleEnabled;
-    this._minChapters = settings.minChapters;
-    this._queueEndBehavior = settings.queueEndBehavior;
-    chrome.storage.onChanged.addListener(this._boundStorageChange);
+    const initialSettings = await settings.read();
+    this._autoAdvance = initialSettings.shuffleEnabled;
+    this._minChapters = initialSettings.minChapters;
+    this._queueEndBehavior = initialSettings.queueEndBehavior;
+    this._unsubscribeSettings = settings.subscribe((changes) => this._onSettingsChange(changes));
     this._shell.injectStyles();
     this._watcher = new YouTubeChapterWatcher(this._doc, {
       minChapters: this._minChapters,
@@ -59,20 +48,17 @@ export class UIInjector {
     this._watcher.start();
   }
 
-  private _onStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
-    const settingsChange = settingsChangeFromChrome(changes);
-    const shuffleEnabled = settingsChange.shuffleEnabled;
-    const queueEndBehavior = settingsChange.queueEndBehavior;
-    const minChapters = settingsChange.minChapters;
+  private _onSettingsChange(changes: Partial<Settings>): void {
+    const { shuffleEnabled, queueEndBehavior, minChapters } = changes;
 
     if (shuffleEnabled !== undefined) {
       this._autoAdvance = shuffleEnabled;
-      if (this._controller) this._controller.autoAdvance = this._autoAdvance;
+      if (this._session) this._session.autoAdvance = this._autoAdvance;
       this._shell.updateShuffleState(this._autoAdvance);
     }
     if (queueEndBehavior !== undefined) {
       this._queueEndBehavior = queueEndBehavior;
-      if (this._controller) this._controller.queueEndBehavior = this._queueEndBehavior;
+      if (this._session) this._session.queueEndBehavior = this._queueEndBehavior;
     }
     if (minChapters !== undefined) {
       this._minChapters = minChapters;
@@ -83,39 +69,33 @@ export class UIInjector {
   private _inject(chapters: Chapter[], controlsBar: Element): void {
     if (this._shell.isMounted) return;
 
-    this._allChapters = chapters;
-    this._videoId =
+    const generation = ++this._sessionGeneration;
+    const videoId =
       new URLSearchParams(this._doc.defaultView?.location.search ?? '').get('v') ?? null;
-
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-    if (video) {
-      this._controller = new PlaybackController(
-        video,
-        chapters,
-        undefined,
-        this._autoAdvance,
-        this._queueEndBehavior
-      );
-      this._video = video;
-      this._video.addEventListener('timeupdate', this._boundHighlightUpdate);
-    }
+    if (!video) return;
 
-    this._shell.mount(controlsBar);
-    this._shell.updateShuffleState(this._autoAdvance);
-    this._renderPanel();
-    this._initTutorialIfNeeded();
+    SessionController.create({
+      video,
+      chapters,
+      videoId,
+      autoAdvance: this._autoAdvance,
+      queueEndBehavior: this._queueEndBehavior,
+      onUpdate: () => this._renderPanel(),
+    }).then((session) => {
+      if (generation !== this._sessionGeneration) {
+        session.destroy();
+        return;
+      }
 
-    if (this._videoId) {
-      const videoId = this._videoId;
-      getExclusions(videoId)
-        .then((exclusions) => {
-          if (this._videoId !== videoId) return;
-          this._excluded = new Set(exclusions);
-          this._controller?.setExcluded(this._excluded);
-          this._renderPanel();
-        })
-        .catch(() => {});
-    }
+      this._session = session;
+      session.autoAdvance = this._autoAdvance;
+      session.queueEndBehavior = this._queueEndBehavior;
+      this._shell.mount(controlsBar);
+      this._shell.updateShuffleState(this._autoAdvance);
+      this._renderPanel();
+      this._initTutorialIfNeeded();
+    });
   }
 
   private _initTutorialIfNeeded(): void {
@@ -124,12 +104,8 @@ export class UIInjector {
         if (!complete && this._shell.isMounted) {
           this._tutorial = new TutorialManager(
             this._doc,
-            () => {
-              setTutorialComplete(true);
-            },
-            () => {
-              this._shell.openPanel();
-            }
+            () => setTutorialComplete(true),
+            () => this._shell.openPanel()
           );
           this._tutorial.start();
         }
@@ -137,114 +113,36 @@ export class UIInjector {
       .catch(() => {});
   }
 
-  private _displayChapters(): Chapter[] {
-    return this._controller ? this._controller.queue : [];
-  }
-
   private _renderPanel(): void {
-    if (!this._controller) return;
-    const controller = this._controller;
-    const displayChapters = this._displayChapters();
-    const queueLength = controller.queue.length;
+    if (!this._session) return;
+    const session = this._session;
     this._shell.render({
-      chapters: displayChapters,
-      allChapters: this._allChapters,
-      currentIndex: controller.currentIndex,
-      activeCount: queueLength,
-      progress: controller.chapterProgress,
-      loopMode: this._loopMode,
-      excludedSeconds: this._excluded,
-      onSeek: (i: number) => {
-        if (i >= queueLength) return;
-        controller.seekToChapter(i);
+      session: session.snapshot,
+      onAction: (action) => {
+        if (this._session !== session) return;
+        session.perform(action);
         this._renderPanel();
-      },
-      onPrev: () => {
-        controller.seekToChapter(controller.currentIndex - 1);
-        this._renderPanel();
-      },
-      onNext: () => {
-        controller.seekToChapter(controller.currentIndex + 1);
-        this._renderPanel();
-      },
-      onReshuffle: () => this._onReshuffle(),
-      onLoopToggle: () => {
-        this._loopMode = !this._loopMode;
-        controller.loopMode = this._loopMode;
-        this._renderPanel();
-      },
-      onReorder: (fromIndex: number, toIndex: number) => {
-        if (fromIndex >= queueLength || toIndex >= queueLength) return;
-        controller.reorderQueue(fromIndex, toIndex);
-        this._renderPanel();
-      },
-      onApplyExclusions: (excludedSeconds: Set<number>) => {
-        this._onApplyExclusions(excludedSeconds);
       },
     });
   }
 
-  private _onApplyExclusions(nextExcluded: Set<number>): void {
-    if (!this._videoId) return;
-    const knownStarts = new Set(this._allChapters.map((chapter) => chapter.startSeconds));
-    const normalized = new Set(
-      [...nextExcluded].filter((startSeconds) => knownStarts.has(startSeconds))
-    );
-    if (this._allChapters.length > 0 && normalized.size >= this._allChapters.length) return;
-
-    const previousExcluded = new Set(this._excluded);
-    const toRestore = this._allChapters.filter(
-      (chapter) =>
-        previousExcluded.has(chapter.startSeconds) && !normalized.has(chapter.startSeconds)
-    );
-
-    this._excluded = normalized;
-    this._controller?.setExcluded(this._excluded);
-    if (toRestore.length > 0) this._controller?.appendToQueue(toRestore);
-    setExclusions(this._videoId, [...this._excluded]).catch(() => {});
-    this._renderPanel();
-  }
-
-  private _onReshuffle(): void {
-    if (!this._controller) {
-      const chapters = parseChapters(this._doc);
-      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      if (chapters && video)
-        this._controller = new PlaybackController(
-          video,
-          chapters,
-          undefined,
-          this._autoAdvance,
-          this._queueEndBehavior
-        );
-    } else {
-      this._controller.reshuffle();
-    }
-    this._renderPanel();
-  }
-
   private _resetInjectedState(): void {
+    this._sessionGeneration++;
     try {
       chrome.runtime.sendMessage({ type: 'livestream-left' });
     } catch {}
     this._tutorial?.destroy();
     this._tutorial = null;
-    this._controller?.destroy();
-    this._controller = null;
-    this._video?.removeEventListener('timeupdate', this._boundHighlightUpdate);
-    this._video = null;
-    this._loopMode = false;
-    this._videoId = null;
-    this._excluded = new Set();
-    this._allChapters = [];
-
+    this._session?.destroy();
+    this._session = null;
     this._shell.unmount();
   }
 
   destroy(): void {
     this._watcher?.destroy();
     this._watcher = null;
-    chrome.storage.onChanged.removeListener(this._boundStorageChange);
+    this._unsubscribeSettings?.();
+    this._unsubscribeSettings = null;
     this._tutorial?.destroy();
     this._tutorial = null;
     this._resetInjectedState();

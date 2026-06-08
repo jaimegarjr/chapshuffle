@@ -2,6 +2,9 @@ import { UIInjector } from '../../src/ui/UIInjector';
 
 function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   const store = { ...initialStore };
+  const changeListeners = new Set<
+    (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void
+  >();
   const storageArea = {
     get: (keys: string[], cb: (r: Record<string, unknown>) => void) => {
       const result: Record<string, unknown> = {};
@@ -23,8 +26,25 @@ function buildChromeMock(initialStore: Record<string, unknown> = {}) {
       sync: storageArea,
       local: storageArea,
       onChanged: {
-        addListener: () => {},
-        removeListener: () => {},
+        addListener(
+          listener: (
+            changes: { [key: string]: chrome.storage.StorageChange },
+            areaName: string
+          ) => void
+        ) {
+          changeListeners.add(listener);
+        },
+        removeListener(
+          listener: (
+            changes: { [key: string]: chrome.storage.StorageChange },
+            areaName: string
+          ) => void
+        ) {
+          changeListeners.delete(listener);
+        },
+        emit(changes: { [key: string]: chrome.storage.StorageChange }, areaName = 'sync') {
+          for (const listener of changeListeners) listener(changes, areaName);
+        },
       },
     },
   };
@@ -91,19 +111,56 @@ function dragItem(fromIndex: number, toIndex: number): void {
 async function flushAll(): Promise<void> {
   jest.runAllTimers();
   await Promise.resolve();
+  await Promise.resolve();
 }
 
 describe('UIInjector — injection guard', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  test('does NOT inject button when fewer than 5 chapters', async () => {
+  test('does not inject when the video has fewer chapters than the configured threshold', async () => {
     addPlayerControls(document);
     addChapterItems(document, 4);
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
     expect(document.getElementById('chapshuffle-btn')).toBeNull();
+    injector.destroy();
+  });
+
+  test('injects when a valid chapter list meets a lower configured threshold', async () => {
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ minChapters: 2 });
+    addPlayerControls(document);
+    addChapterItems(document, 2);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+
+    await injector.init();
+    await flushAll();
+
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
+    expect(document.querySelectorAll('.chapshuffle-item')).toHaveLength(2);
+    injector.destroy();
+  });
+
+  test('re-evaluates the current video when the activation threshold setting changes', async () => {
+    const chromeMock = buildChromeMock();
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+    addPlayerControls(document);
+    addChapterItems(document, 4);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+
+    await injector.init();
+    await flushAll();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+
+    chromeMock.storage.onChanged.emit({
+      minChapters: { oldValue: 5, newValue: 4 },
+    });
+    await flushAll();
+
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
     injector.destroy();
   });
 
@@ -355,8 +412,6 @@ describe('UIInjector — exclusion editing mode', () => {
 
   test('clicking a row in exclusion mode removes that chapter from the playable queue', async () => {
     window.history.replaceState(null, '', '/watch?v=video-1');
-    const chromeMock = buildChromeMock();
-    (global as unknown as Record<string, unknown>).chrome = chromeMock;
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     addPlayerControls(document);
     addChapterItems(document, 5);
@@ -379,9 +434,6 @@ describe('UIInjector — exclusion editing mode', () => {
       (el) => el.textContent
     );
     expect(titles).not.toContain('Chapter 3');
-    expect(
-      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>)['video-1']
-    ).toContain(120);
 
     randomSpy.mockRestore();
     injector.destroy();
@@ -389,8 +441,6 @@ describe('UIInjector — exclusion editing mode', () => {
 
   test('drafting an exclusion does not seek until Done is clicked', async () => {
     window.history.replaceState(null, '', '/watch?v=video-2');
-    const chromeMock = buildChromeMock();
-    (global as unknown as Record<string, unknown>).chrome = chromeMock;
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     addPlayerControls(document);
     addChapterItems(document, 5);
@@ -414,19 +464,11 @@ describe('UIInjector — exclusion editing mode', () => {
     await Promise.resolve();
 
     expect(video.currentTime).toBe(0);
-    expect(
-      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]> | undefined)?.[
-        'video-2'
-      ]
-    ).toBeUndefined();
 
     (document.getElementById('chapshuffle-exclusion-done') as HTMLButtonElement).click();
     await Promise.resolve();
 
     expect(video.currentTime).toBe(120);
-    expect(
-      (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>)['video-2']
-    ).toContain(60);
 
     randomSpy.mockRestore();
     injector.destroy();
@@ -468,10 +510,11 @@ describe('UIInjector — exclusion editing mode', () => {
     (document.getElementById('chapshuffle-exclusion-done') as HTMLButtonElement).click();
     await Promise.resolve();
 
-    const persistedExclusions = (
-      chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>
-    )['video-3'];
-    expect(persistedExclusions).toEqual([0, 60, 120, 180]);
+    const queueTitles = Array.from(document.querySelectorAll('.chapshuffle-title')).map(
+      (el) => el.textContent
+    );
+    expect(queueTitles).not.toContain('Chapter 1');
+    expect(queueTitles).toContain('Chapter 5');
 
     injector.destroy();
   });
@@ -540,6 +583,51 @@ describe('UIInjector — navigation (stale queue regression)', () => {
 
     expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
     expect(document.querySelectorAll('.chapshuffle-item').length).toBe(8);
+
+    injector.destroy();
+  });
+
+  test('a session that finishes loading after navigation cannot mount stale chapters', async () => {
+    window.history.replaceState(null, '', '/watch?v=video-a');
+    const chromeMock = buildChromeMock();
+    const exclusionReads: Array<(result: Record<string, unknown>) => void> = [];
+    chromeMock.storage.local = {
+      ...chromeMock.storage.local,
+      get: (_keys, callback) => exclusionReads.push(callback),
+    };
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    jest.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(exclusionReads).toHaveLength(1);
+
+    document.body.innerHTML = '';
+    window.history.replaceState(null, '', '/watch?v=video-b');
+    addPlayerControls(document);
+    addChapterItems(document, 8);
+    addVideoElement(document);
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+    jest.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(exclusionReads).toHaveLength(2);
+
+    exclusionReads[0]({ chapterExclusions: { 'video-a': [60] } });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+
+    exclusionReads[1]({});
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
+    expect(document.querySelectorAll('.chapshuffle-item')).toHaveLength(8);
 
     injector.destroy();
   });

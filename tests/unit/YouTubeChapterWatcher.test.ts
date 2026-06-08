@@ -125,6 +125,27 @@ describe('YouTubeChapterWatcher', () => {
     watcher.destroy();
   });
 
+  test('re-evaluates the current video when the activation threshold changes', () => {
+    addPlayerControls(document);
+    addChapterItems(document.body, 4);
+    const onChaptersReady = jest.fn();
+    const watcher = buildWatcher(document, { minChapters: 5, onChaptersReady });
+
+    watcher.start();
+    jest.runOnlyPendingTimers();
+    jest.runOnlyPendingTimers();
+    expect(onChaptersReady).not.toHaveBeenCalled();
+
+    watcher.minChapters = 4;
+    jest.runOnlyPendingTimers();
+    jest.runOnlyPendingTimers();
+
+    expect(onChaptersReady).toHaveBeenCalledTimes(1);
+    expect(onChaptersReady.mock.calls[0][0]).toHaveLength(4);
+
+    watcher.destroy();
+  });
+
   test('reports livestreams instead of waiting for chapters', () => {
     addPlayerControls(document);
     const liveMarker = document.createElement('div');

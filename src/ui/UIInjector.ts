@@ -1,5 +1,4 @@
 import type { Chapter } from '../types';
-import { parse as parseChapters } from '../parser/ChapterParser';
 import { SessionController } from '../playback/SessionController';
 import {
   DEFAULT_SETTINGS,
@@ -163,22 +162,7 @@ export class UIInjector {
   }
 
   private _onReshuffle(): void {
-    if (!this._session) {
-      const chapters = parseChapters(this._doc);
-      const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
-      if (chapters && video) {
-        this._session = new SessionController(
-          video,
-          chapters,
-          null,
-          this._autoAdvance,
-          this._queueEndBehavior,
-          () => this._renderPanel()
-        );
-      }
-    } else {
-      this._session.reshuffle();
-    }
+    this._session?.reshuffle();
     this._renderPanel();
   }
 

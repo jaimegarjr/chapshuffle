@@ -97,13 +97,28 @@ describe('UIInjector — injection guard', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  test('does NOT inject button when fewer than 5 chapters', async () => {
+  test('does not inject when the video has fewer chapters than the configured threshold', async () => {
     addPlayerControls(document);
     addChapterItems(document, 4);
     const injector = new UIInjector(document);
     await injector.init();
     await flushAll();
     expect(document.getElementById('chapshuffle-btn')).toBeNull();
+    injector.destroy();
+  });
+
+  test('injects when a valid chapter list meets a lower configured threshold', async () => {
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({ minChapters: 2 });
+    addPlayerControls(document);
+    addChapterItems(document, 2);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+
+    await injector.init();
+    await flushAll();
+
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
+    expect(document.querySelectorAll('.chapshuffle-item')).toHaveLength(2);
     injector.destroy();
   });
 

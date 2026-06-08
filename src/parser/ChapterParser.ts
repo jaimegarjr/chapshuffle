@@ -5,8 +5,6 @@ const TIMESTAMP_SEL =
   '#time, .ytd-macro-markers-list-item-renderer span[class*="time"], .time-string';
 const TITLE_SEL = 'h4.yt-simple-endpoint, #video-title, h4[class]';
 
-const MIN_CHAPTERS = 5;
-
 export function parseTimestamp(raw: string): number {
   const str = raw.trim();
   const parts = str.split(':');
@@ -28,7 +26,7 @@ export function parse(root?: Document | Element): Chapter[] | null {
   if (!doc) return null;
 
   const items = Array.from(doc.querySelectorAll(CHAPTER_ITEM));
-  if (items.length < MIN_CHAPTERS) return null;
+  if (items.length === 0) return null;
 
   const seen = new Set<number>();
   const chapters: Chapter[] = [];

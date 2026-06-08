@@ -38,6 +38,14 @@ test('user can toggle loop mode for the current chapter', async ({ page, extensi
   const activeRow = page.locator('#chapshuffle-queue .chapshuffle-item.chapshuffle-active');
   const activeTitle = await activeRow.locator('.chapshuffle-title').innerText();
   const activeStart = timestampToSeconds(await activeRow.locator('.chapshuffle-time').innerText());
+  await activeRow.click();
+  await expect
+    .poll(() => page.locator('video').evaluate((video) => (video as HTMLVideoElement).currentTime))
+    .toBe(activeStart);
+  await expect(page.locator('.ytp-time-current')).toHaveText(
+    `${Math.floor(activeStart / 60)}:${String(activeStart % 60).padStart(2, '0')}`
+  );
+
   const loopButton = page.locator('#chapshuffle-loop');
   await expect(loopButton).toHaveAttribute('aria-pressed', 'false');
   await loopButton.click();

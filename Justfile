@@ -17,6 +17,10 @@ test-watch:
 e2e-test mode="headless" target="":
     bin/e2e-test "{{mode}}" "{{target}}"
 
+# Run mocked YouTube integration tests; optionally pass `debug` and a test name or spec path
+integration-test mode="headless" target="":
+    bin/integration-test "{{mode}}" "{{target}}"
+
 # Type-check without emitting files
 typecheck:
     yarn tsc --noEmit

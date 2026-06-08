@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+MODE=${1:-headless}
+TARGET=${2:-}
+
+case "$MODE" in
+  headless | debug) ;;
+  *)
+    echo "Usage: bin/integration-test [headless|debug] [test name or spec path]" >&2
+    exit 1
+    ;;
+esac
+
+cd "$REPO_ROOT"
+yarn build:prod
+
+TEST_ARGS=()
+if [[ -n "$TARGET" ]]; then
+  if [[ "$TARGET" == *.spec.ts || "$TARGET" == tests/* ]]; then
+    TEST_ARGS+=("$TARGET")
+  else
+    TEST_ARGS+=("-g" "$TARGET")
+  fi
+fi
+
+if [[ "$MODE" == "debug" ]]; then
+  PLAYWRIGHT_HEADLESS=false PWDEBUG=1 yarn test:integration "${TEST_ARGS[@]}"
+elif [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+  yarn test:integration "${TEST_ARGS[@]}"
+else
+  yarn test:integration
+fi

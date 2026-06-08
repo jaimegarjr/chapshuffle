@@ -7,12 +7,13 @@
   "scripts": {
     "test": "jest",
     "test:e2e": "playwright test",
+    "test:integration": "playwright test --config=playwright.integration.config.ts",
     "build": "node build.js",
     "build:prod": "node build.js --prod",
     "watch": "node build.js --watch",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"src/**/*.{ts,tsx,html,css}\" \"tests/e2e/**/*.{ts,tsx,html}\" playwright.config.ts",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,html,css}\" \"tests/e2e/**/*.{ts,tsx,html}\" playwright.config.ts"
+    "format": "prettier --write \"src/**/*.{ts,tsx,html,css}\" \"tests/{e2e,integration}/**/*.{ts,tsx,html}\" playwright.config.ts playwright.integration.config.ts",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,html,css}\" \"tests/{e2e,integration}/**/*.{ts,tsx,html}\" playwright.config.ts playwright.integration.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

@@ -17,16 +17,33 @@ test('user can open, close, and seek through the shuffled queue', async ({ page,
   const rows = panel.locator('.chapshuffle-item');
   await expect(rows).toHaveCount(6);
 
-  const targetRow = rows.nth(1);
-  const targetSeconds = timestampToSeconds(
-    await targetRow.locator('.chapshuffle-time').innerText()
+  const chapterTimes = (await rows.locator('.chapshuffle-time').allTextContents()).map(
+    timestampToSeconds
   );
+  const targetIndex = chapterTimes.findIndex((seconds) => seconds > 0);
+  const targetRow = rows.nth(targetIndex);
+  const targetSeconds = chapterTimes[targetIndex];
   await targetRow.click();
 
   await expect(targetRow).toHaveClass(/chapshuffle-active/);
   await expect
     .poll(() => page.locator('video').evaluate((video) => (video as HTMLVideoElement).currentTime))
     .toBe(targetSeconds);
+  const duration = await page
+    .locator('video')
+    .evaluate((video) => (video as HTMLVideoElement).duration);
+  const expectedProgress = (targetSeconds / duration) * 100;
+  await expect
+    .poll(() =>
+      page
+        .getByRole('slider', { name: 'Seek slider' })
+        .getAttribute('aria-valuenow')
+        .then((value) => Number(value))
+    )
+    .toBeCloseTo(expectedProgress, 1);
+  await expect(page.locator('.ytp-time-current')).toHaveText(
+    `${Math.floor(targetSeconds / 60)}:${String(targetSeconds % 60).padStart(2, '0')}`
+  );
 
   await toggle.click();
   await expect(panel).toBeHidden();

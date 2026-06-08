@@ -76,6 +76,38 @@ function mockYouTubeHtml(videoId: string): string {
       body { margin: 0; background: #0f0f0f; color: white; font-family: Arial, sans-serif; }
       #movie_player { position: relative; width: 960px; height: 540px; background: #181818; }
       video { display: block; width: 100%; height: 100%; }
+      .ytp-progress-bar-container {
+        position: absolute;
+        right: 16px;
+        bottom: 52px;
+        left: 16px;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.28);
+        border-radius: 999px;
+      }
+      .ytp-play-progress {
+        position: relative;
+        width: 0;
+        height: 100%;
+        background: #f00;
+        border-radius: inherit;
+      }
+      .ytp-scrubber-button {
+        position: absolute;
+        top: 50%;
+        right: -6px;
+        width: 12px;
+        height: 12px;
+        background: #f00;
+        border-radius: 50%;
+        transform: translateY(-50%);
+      }
+      .ytp-time-display {
+        position: absolute;
+        bottom: 12px;
+        left: 16px;
+        font-size: 13px;
+      }
       .ytp-right-controls { position: absolute; right: 16px; bottom: 8px; display: flex; min-height: 40px; }
       ytd-macro-markers-list-renderer { display: block; padding: 16px; }
       ytd-macro-markers-list-item-renderer { display: block; }
@@ -84,6 +116,23 @@ function mockYouTubeHtml(videoId: string): string {
   <body>
     <div id="movie_player" class="html5-video-player">
       <video src=${mediaUrl}></video>
+      <div
+        class="ytp-progress-bar-container"
+        role="slider"
+        aria-label="Seek slider"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      >
+        <div class="ytp-play-progress">
+          <div class="ytp-scrubber-button"></div>
+        </div>
+      </div>
+      <div class="ytp-time-display">
+        <span class="ytp-time-current">0:00</span>
+        /
+        <span class="ytp-time-duration">0:00</span>
+      </div>
       <div class="ytp-right-controls"></div>
     </div>
     <div id="chapters"></div>
@@ -91,6 +140,30 @@ function mockYouTubeHtml(videoId: string): string {
       (() => {
         const videos = ${videosJson};
         const video = document.querySelector('video');
+        const seekBar = document.querySelector('.ytp-progress-bar-container');
+        const played = document.querySelector('.ytp-play-progress');
+        const currentTimeLabel = document.querySelector('.ytp-time-current');
+        const durationLabel = document.querySelector('.ytp-time-duration');
+
+        const formatTime = (totalSeconds) => {
+          const safeSeconds = Number.isFinite(totalSeconds) ? Math.floor(totalSeconds) : 0;
+          const minutes = Math.floor(safeSeconds / 60);
+          const seconds = String(safeSeconds % 60).padStart(2, '0');
+          return minutes + ':' + seconds;
+        };
+
+        const updateSeekBar = () => {
+          const duration = Number.isFinite(video.duration) ? video.duration : 0;
+          const progress = duration > 0 ? Math.min(100, (video.currentTime / duration) * 100) : 0;
+          played.style.width = progress + '%';
+          seekBar.setAttribute('aria-valuenow', progress.toFixed(2));
+          currentTimeLabel.textContent = formatTime(video.currentTime);
+          durationLabel.textContent = formatTime(duration);
+        };
+
+        for (const eventName of ['loadedmetadata', 'durationchange', 'timeupdate', 'seeked']) {
+          video.addEventListener(eventName, updateSeekBar);
+        }
 
         const renderChapters = (videoId) => {
           const chapters = videos[videoId] || [];
@@ -118,12 +191,14 @@ function mockYouTubeHtml(videoId: string): string {
           navigate(videoId) {
             history.pushState({}, '', '/watch?v=' + encodeURIComponent(videoId));
             video.currentTime = 0;
+            updateSeekBar();
             renderChapters(videoId);
             document.dispatchEvent(new Event('yt-navigate-finish'));
           }
         };
 
         renderChapters(${initialVideoId});
+        updateSeekBar();
       })();
     </script>
   </body>

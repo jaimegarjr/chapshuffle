@@ -1,24 +1,12 @@
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
-import type { Chapter } from '../types';
+import type { SessionAction, SessionSnapshot } from '../playback/SessionController';
 
 const PANEL_ID = 'chapshuffle-queue';
 
 export interface QueuePanelProps {
-  chapters: Chapter[];
-  allChapters: Chapter[];
-  currentIndex: number;
-  activeCount: number;
-  progress: number;
-  loopMode: boolean;
-  excludedSeconds: Set<number>;
-  onSeek: (index: number) => void;
-  onReshuffle: () => void;
-  onLoopToggle: () => void;
-  onPrev: () => void;
-  onNext: () => void;
-  onReorder: (fromIndex: number, toIndex: number) => void;
-  onApplyExclusions: (excludedSeconds: Set<number>) => void;
+  session: SessionSnapshot;
+  onAction: (action: SessionAction) => void;
 }
 
 function secondsToTimestamp(totalSeconds: number): string {
@@ -223,32 +211,20 @@ function CheckIcon() {
 }
 
 function QueuePanel({
-  chapters,
-  allChapters,
-  currentIndex,
-  activeCount,
-  progress,
-  loopMode,
-  excludedSeconds,
-  onSeek,
-  onReshuffle,
-  onLoopToggle,
-  onPrev,
-  onNext,
-  onReorder,
-  onApplyExclusions,
+  session: { queue, allChapters, currentIndex, progress, loopMode, excludedSeconds },
+  onAction,
 }: QueuePanelProps) {
   const [isEditingExclusions, setIsEditingExclusions] = useState(false);
   const [draftExcludedSeconds, setDraftExcludedSeconds] = useState<Set<number>>(
     () => new Set(excludedSeconds)
   );
   const atStart = currentIndex === 0;
-  const atEnd = currentIndex >= activeCount - 1;
+  const atEnd = currentIndex >= queue.length - 1;
   const hasDraftExclusions = draftExcludedSeconds.size > 0;
   const draftIncludedCount = allChapters.filter(
     (chapter) => !draftExcludedSeconds.has(chapter.startSeconds)
   ).length;
-  const visibleChapters = isEditingExclusions ? allChapters : chapters;
+  const visibleChapters = isEditingExclusions ? allChapters : queue;
   const openExclusionEditor = () => {
     setDraftExcludedSeconds(new Set(excludedSeconds));
     setIsEditingExclusions(true);
@@ -267,7 +243,10 @@ function QueuePanel({
     });
   };
   const applyDraftExclusions = () => {
-    onApplyExclusions(new Set(draftExcludedSeconds));
+    onAction({
+      type: 'apply-exclusions',
+      excludedSeconds: new Set(draftExcludedSeconds),
+    });
     setIsEditingExclusions(false);
   };
 
@@ -299,7 +278,7 @@ function QueuePanel({
                 if (isEditingExclusions) {
                   if (!wouldExcludeLastIncluded) toggleDraftExclusion(chapter.startSeconds);
                 } else {
-                  onSeek(i);
+                  onAction({ type: 'seek', index: i });
                 }
               }}
               onDragStart={(e: DragEvent) => {
@@ -320,7 +299,7 @@ function QueuePanel({
                 e.stopPropagation();
                 const fromIndex = Number(e.dataTransfer?.getData('text/plain'));
                 if (!Number.isInteger(fromIndex)) return;
-                onReorder(fromIndex, i);
+                onAction({ type: 'reorder', fromIndex, toIndex: i });
               }}
             >
               {isPlayableRow ? (
@@ -385,7 +364,7 @@ function QueuePanel({
               title={loopMode ? 'Loop: on - click to disable' : 'Loop: off - click to enable'}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                onLoopToggle();
+                onAction({ type: 'toggle-loop' });
               }}
             >
               <LoopIcon />
@@ -396,7 +375,7 @@ function QueuePanel({
               title="Previous chapter"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                onPrev();
+                onAction({ type: 'previous' });
               }}
             >
               <SkipBackIcon />
@@ -406,7 +385,7 @@ function QueuePanel({
               class="chapshuffle-footer-btn chapshuffle-primary"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                onReshuffle();
+                onAction({ type: 'reshuffle' });
               }}
             >
               <ShuffleIcon />
@@ -418,7 +397,7 @@ function QueuePanel({
               title="Next chapter"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                onNext();
+                onAction({ type: 'next' });
               }}
             >
               <SkipForwardIcon />

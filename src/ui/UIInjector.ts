@@ -115,49 +115,15 @@ export class UIInjector {
 
   private _renderPanel(): void {
     if (!this._session) return;
-    const snap = this._session.snapshot;
-    const queueLength = snap.activeCount;
+    const session = this._session;
     this._shell.render({
-      chapters: snap.queue,
-      allChapters: snap.allChapters,
-      currentIndex: snap.currentIndex,
-      activeCount: queueLength,
-      progress: snap.progress,
-      loopMode: snap.loopMode,
-      excludedSeconds: snap.excludedSeconds,
-      onSeek: (i: number) => {
-        if (i >= queueLength) return;
-        this._session?.seekToChapter(i);
-        this._renderPanel();
-      },
-      onPrev: () => {
-        this._session?.seekToChapter(snap.currentIndex - 1);
-        this._renderPanel();
-      },
-      onNext: () => {
-        this._session?.seekToChapter(snap.currentIndex + 1);
-        this._renderPanel();
-      },
-      onReshuffle: () => this._onReshuffle(),
-      onLoopToggle: () => {
-        this._session?.toggleLoopMode();
-        this._renderPanel();
-      },
-      onReorder: (fromIndex: number, toIndex: number) => {
-        if (fromIndex >= queueLength || toIndex >= queueLength) return;
-        this._session?.reorderQueue(fromIndex, toIndex);
-        this._renderPanel();
-      },
-      onApplyExclusions: (excludedSeconds: Set<number>) => {
-        this._session?.applyExclusions(excludedSeconds);
+      session: session.snapshot,
+      onAction: (action) => {
+        if (this._session !== session) return;
+        session.perform(action);
         this._renderPanel();
       },
     });
-  }
-
-  private _onReshuffle(): void {
-    this._session?.reshuffle();
-    this._renderPanel();
   }
 
   private _resetInjectedState(): void {

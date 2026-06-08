@@ -8,20 +8,15 @@ const chapters = [
 
 function props(overrides: Partial<QueuePanelProps> = {}): QueuePanelProps {
   return {
-    chapters,
-    allChapters: chapters,
-    currentIndex: 0,
-    activeCount: chapters.length,
-    progress: 0,
-    loopMode: false,
-    excludedSeconds: new Set(),
-    onSeek: () => {},
-    onReshuffle: () => {},
-    onLoopToggle: () => {},
-    onPrev: () => {},
-    onNext: () => {},
-    onReorder: () => {},
-    onApplyExclusions: () => {},
+    session: {
+      queue: chapters,
+      allChapters: chapters,
+      currentIndex: 0,
+      progress: 0,
+      loopMode: false,
+      excludedSeconds: new Set(),
+    },
+    onAction: () => {},
     ...overrides,
   };
 }
@@ -74,6 +69,23 @@ describe('InjectedQueueShell', () => {
     expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
     expect(document.getElementById('chapshuffle-queue')!.style.display).toBe('none');
     expect(document.querySelectorAll('.chapshuffle-item')).toHaveLength(2);
+  });
+
+  test('translates queue interactions into session actions', () => {
+    const controls = addPlayerControls(document);
+    const onAction = jest.fn();
+    const shell = new InjectedQueueShell(document, () => {});
+    shell.mount(controls);
+    shell.render(props({ onAction }));
+
+    const rows = document.querySelectorAll<HTMLElement>('.chapshuffle-item');
+    rows[1].click();
+    (document.querySelectorAll('.chapshuffle-nav-btn')[1] as HTMLButtonElement).click();
+    (document.getElementById('chapshuffle-loop') as HTMLButtonElement).click();
+
+    expect(onAction).toHaveBeenNthCalledWith(1, { type: 'seek', index: 1 });
+    expect(onAction).toHaveBeenNthCalledWith(2, { type: 'next' });
+    expect(onAction).toHaveBeenNthCalledWith(3, { type: 'toggle-loop' });
   });
 
   test('opens and closes the panel from the toggle button', () => {

@@ -16,11 +16,19 @@ export interface SessionSnapshot {
   queue: Chapter[];
   allChapters: Chapter[];
   currentIndex: number;
-  activeCount: number;
   progress: number;
   loopMode: boolean;
   excludedSeconds: Set<number>;
 }
+
+export type SessionAction =
+  | { type: 'seek'; index: number }
+  | { type: 'previous' }
+  | { type: 'next' }
+  | { type: 'reshuffle' }
+  | { type: 'toggle-loop' }
+  | { type: 'reorder'; fromIndex: number; toIndex: number }
+  | { type: 'apply-exclusions'; excludedSeconds: Set<number> };
 
 export class SessionController {
   private readonly _controller: PlaybackController;
@@ -80,7 +88,6 @@ export class SessionController {
       queue: this._controller.queue,
       allChapters: this._allChapters,
       currentIndex: this._controller.currentIndex,
-      activeCount: this._controller.queue.length,
       progress: this._controller.chapterProgress,
       loopMode: this._loopMode,
       excludedSeconds: new Set(this._excluded),
@@ -95,24 +102,33 @@ export class SessionController {
     this._controller.queueEndBehavior = value;
   }
 
-  toggleLoopMode(): void {
-    this._loopMode = !this._loopMode;
-    this._controller.loopMode = this._loopMode;
+  perform(action: SessionAction): void {
+    switch (action.type) {
+      case 'seek':
+        this._controller.seekToChapter(action.index);
+        return;
+      case 'previous':
+        this._controller.seekToChapter(this._controller.currentIndex - 1);
+        return;
+      case 'next':
+        this._controller.seekToChapter(this._controller.currentIndex + 1);
+        return;
+      case 'reshuffle':
+        this._controller.reshuffle();
+        return;
+      case 'toggle-loop':
+        this._loopMode = !this._loopMode;
+        this._controller.loopMode = this._loopMode;
+        return;
+      case 'reorder':
+        this._controller.reorderQueue(action.fromIndex, action.toIndex);
+        return;
+      case 'apply-exclusions':
+        this._applyExclusions(action.excludedSeconds);
+    }
   }
 
-  seekToChapter(index: number): void {
-    this._controller.seekToChapter(index);
-  }
-
-  reshuffle(): void {
-    this._controller.reshuffle();
-  }
-
-  reorderQueue(fromIndex: number, toIndex: number): boolean {
-    return this._controller.reorderQueue(fromIndex, toIndex);
-  }
-
-  applyExclusions(nextExcluded: Set<number>): void {
+  private _applyExclusions(nextExcluded: Set<number>): void {
     const normalized = this._knownExclusions(nextExcluded);
     if (this._allChapters.length > 0 && normalized.size >= this._allChapters.length) return;
 

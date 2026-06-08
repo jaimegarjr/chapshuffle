@@ -1,7 +1,16 @@
 import type { Chapter } from '../types';
 import type { QueueEndBehavior } from '../persistence/PersistenceManager';
 import { PlaybackController } from './PlaybackController';
-import { setExclusions } from '../exclusion/ExclusionManager';
+import { getExclusions, setExclusions } from '../exclusion/ExclusionManager';
+
+export interface SessionControllerOptions {
+  video: HTMLVideoElement;
+  chapters: Chapter[];
+  videoId: string | null;
+  autoAdvance: boolean;
+  queueEndBehavior: QueueEndBehavior;
+  onUpdate: () => void;
+}
 
 export interface SessionSnapshot {
   queue: Chapter[];
@@ -22,13 +31,33 @@ export class SessionController {
   private readonly _boundOnUpdate: () => void;
   private readonly _video: HTMLVideoElement;
 
-  constructor(
+  static async create(options: SessionControllerOptions): Promise<SessionController> {
+    let storedExclusions: number[] = [];
+    if (options.videoId) {
+      try {
+        storedExclusions = await getExclusions(options.videoId);
+      } catch {}
+    }
+
+    return new SessionController(
+      options.video,
+      options.chapters,
+      options.videoId,
+      options.autoAdvance,
+      options.queueEndBehavior,
+      options.onUpdate,
+      new Set(storedExclusions)
+    );
+  }
+
+  private constructor(
     video: HTMLVideoElement,
     chapters: Chapter[],
     videoId: string | null,
     autoAdvance: boolean,
     queueEndBehavior: QueueEndBehavior,
-    onUpdate: () => void
+    onUpdate: () => void,
+    initialExclusions: Set<number> = new Set()
   ) {
     this._video = video;
     this._allChapters = chapters;
@@ -40,6 +69,8 @@ export class SessionController {
       autoAdvance,
       queueEndBehavior
     );
+    this._excluded = this._normalizeInitialExclusions(initialExclusions);
+    this._controller.setExcluded(this._excluded);
     this._boundOnUpdate = onUpdate;
     video.addEventListener('timeupdate', this._boundOnUpdate);
   }
@@ -82,9 +113,7 @@ export class SessionController {
   }
 
   applyExclusions(nextExcluded: Set<number>): void {
-    const knownStarts = new Set(this._allChapters.map((c) => c.startSeconds));
-    const normalized = new Set([...nextExcluded].filter((s) => knownStarts.has(s)));
-
+    const normalized = this._knownExclusions(nextExcluded);
     if (this._allChapters.length > 0 && normalized.size >= this._allChapters.length) return;
 
     const toRestore = this._allChapters.filter(
@@ -100,8 +129,14 @@ export class SessionController {
     }
   }
 
-  appendToQueue(chapters: Chapter[]): void {
-    this._controller.appendToQueue(chapters);
+  private _knownExclusions(excluded: Set<number>): Set<number> {
+    const knownStarts = new Set(this._allChapters.map((chapter) => chapter.startSeconds));
+    return new Set([...excluded].filter((startSeconds) => knownStarts.has(startSeconds)));
+  }
+
+  private _normalizeInitialExclusions(excluded: Set<number>): Set<number> {
+    const normalized = this._knownExclusions(excluded);
+    return normalized.size < this._allChapters.length ? normalized : new Set();
   }
 
   destroy(): void {

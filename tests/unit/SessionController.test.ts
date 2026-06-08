@@ -1,5 +1,5 @@
-import { SessionController } from '../src/playback/SessionController';
-import type { Chapter } from '../src/types';
+import { SessionController } from '../../src/playback/SessionController';
+import type { Chapter } from '../../src/types';
 
 function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   const store = { ...initialStore };
@@ -9,10 +9,10 @@ function buildChromeMock(initialStore: Record<string, unknown> = {}) {
       for (const k of keys) if (k in store) result[k] = store[k];
       cb(result);
     },
-    set: (items: Record<string, unknown>, cb: () => void) => {
+    set: jest.fn((items: Record<string, unknown>, cb: () => void) => {
       Object.assign(store, items);
       cb();
-    },
+    }),
     _store: store,
   };
   return {
@@ -35,6 +35,20 @@ function makeVideo(currentTime = 0): HTMLVideoElement {
   return video;
 }
 
+function createSession(
+  overrides: Partial<Parameters<typeof SessionController.create>[0]> = {}
+): Promise<SessionController> {
+  return SessionController.create({
+    video: makeVideo(),
+    chapters: makeChapters(5),
+    videoId: null,
+    autoAdvance: false,
+    queueEndBehavior: 'reshuffle',
+    onUpdate: () => {},
+    ...overrides,
+  });
+}
+
 beforeEach(() => {
   (global as unknown as Record<string, unknown>).chrome = buildChromeMock();
 });
@@ -43,10 +57,10 @@ afterEach(() => {
 });
 
 describe('SessionController — snapshot', () => {
-  test('snapshot reflects initial queue state', () => {
+  test('snapshot reflects initial queue state', async () => {
     const chapters = makeChapters(5);
     const video = makeVideo();
-    const session = new SessionController(video, chapters, null, false, 'reshuffle', () => { });
+    const session = await createSession({ video, chapters });
 
     const snap = session.snapshot;
     expect(snap.allChapters).toHaveLength(5);
@@ -59,9 +73,53 @@ describe('SessionController — snapshot', () => {
   });
 });
 
+describe('SessionController — creation', () => {
+  test('loads stored exclusions without persisting them again', async () => {
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    const chromeMock = buildChromeMock({
+      chapterExclusions: { 'vid-1': [60] },
+    });
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+
+    const session = await SessionController.create({
+      video: makeVideo(),
+      chapters: makeChapters(3),
+      videoId: 'vid-1',
+      autoAdvance: false,
+      queueEndBehavior: 'reshuffle',
+      onUpdate: () => {},
+    });
+
+    expect(session.snapshot.excludedSeconds).toEqual(new Set([60]));
+    expect(
+      session.snapshot.queue.map((chapter) => chapter.startSeconds).sort((a, b) => a - b)
+    ).toEqual([0, 120]);
+    expect(chromeMock.storage.local.set).not.toHaveBeenCalled();
+
+    jest.mocked(Math.random).mockRestore();
+    session.destroy();
+  });
+
+  test('ignores stored exclusions that would remove every chapter', async () => {
+    (global as unknown as Record<string, unknown>).chrome = buildChromeMock({
+      chapterExclusions: { 'vid-2': [0, 60, 120] },
+    });
+
+    const session = await createSession({
+      chapters: makeChapters(3),
+      videoId: 'vid-2',
+    });
+
+    expect(session.snapshot.queue).toHaveLength(3);
+    expect(session.snapshot.excludedSeconds).toEqual(new Set());
+
+    session.destroy();
+  });
+});
+
 describe('SessionController — loop mode', () => {
-  test('toggleLoopMode flips loopMode in snapshot', () => {
-    const session = new SessionController(makeVideo(), makeChapters(5), null, false, 'reshuffle', () => { });
+  test('toggleLoopMode flips loopMode in snapshot', async () => {
+    const session = await createSession();
 
     expect(session.snapshot.loopMode).toBe(false);
     session.toggleLoopMode();
@@ -74,10 +132,10 @@ describe('SessionController — loop mode', () => {
 });
 
 describe('SessionController — reshuffle', () => {
-  test('reshuffle produces the same chapters in potentially different order', () => {
+  test('reshuffle produces the same chapters in potentially different order', async () => {
     jest.spyOn(Math, 'random').mockReturnValue(0.99);
     const chapters = makeChapters(5);
-    const session = new SessionController(makeVideo(), chapters, null, false, 'reshuffle', () => { });
+    const session = await createSession({ chapters });
 
     const before = session.snapshot.queue.map((c) => c.title);
     session.reshuffle();
@@ -92,9 +150,9 @@ describe('SessionController — reshuffle', () => {
 });
 
 describe('SessionController — seekToChapter', () => {
-  test('seekToChapter updates currentIndex in snapshot', () => {
+  test('seekToChapter updates currentIndex in snapshot', async () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);
-    const session = new SessionController(makeVideo(), makeChapters(5), null, false, 'reshuffle', () => { });
+    const session = await createSession();
 
     expect(session.snapshot.currentIndex).toBe(0);
     session.seekToChapter(2);
@@ -109,7 +167,7 @@ describe('SessionController — applyExclusions', () => {
   test('excluded chapters are removed from the queue', async () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);
     const chapters = makeChapters(5);
-    const session = new SessionController(makeVideo(), chapters, 'vid-1', false, 'reshuffle', () => { });
+    const session = await createSession({ chapters, videoId: 'vid-1' });
 
     // Chapter 3 starts at 120s
     session.applyExclusions(new Set([120]));
@@ -128,12 +186,14 @@ describe('SessionController — applyExclusions', () => {
     const chromeMock = buildChromeMock();
     (global as unknown as Record<string, unknown>).chrome = chromeMock;
 
-    const session = new SessionController(makeVideo(), makeChapters(5), 'vid-2', false, 'reshuffle', () => { });
+    const session = await createSession({ videoId: 'vid-2' });
     session.applyExclusions(new Set([60]));
     await Promise.resolve();
     await Promise.resolve(); // flush nested async in setExclusions
 
-    const stored = (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>)['vid-2'];
+    const stored = (chromeMock.storage.local._store.chapterExclusions as Record<string, number[]>)[
+      'vid-2'
+    ];
     expect(stored).toContain(60);
 
     jest.mocked(Math.random).mockRestore();
@@ -142,7 +202,7 @@ describe('SessionController — applyExclusions', () => {
 
   test('applyExclusions will not exclude all chapters', async () => {
     const chapters = makeChapters(3);
-    const session = new SessionController(makeVideo(), chapters, 'vid-3', false, 'reshuffle', () => { });
+    const session = await createSession({ chapters, videoId: 'vid-3' });
 
     // Try to exclude all 3 chapters
     session.applyExclusions(new Set([0, 60, 120]));
@@ -158,7 +218,7 @@ describe('SessionController — applyExclusions', () => {
   test('restoring a chapter adds it back to the queue', async () => {
     jest.spyOn(Math, 'random').mockReturnValue(0);
     const chapters = makeChapters(5);
-    const session = new SessionController(makeVideo(), chapters, 'vid-4', false, 'reshuffle', () => { });
+    const session = await createSession({ chapters, videoId: 'vid-4' });
 
     // Exclude chapter 2 (60s)
     session.applyExclusions(new Set([60]));
@@ -176,10 +236,10 @@ describe('SessionController — applyExclusions', () => {
 });
 
 describe('SessionController — onUpdate', () => {
-  test('onUpdate fires when video timeupdate event fires', () => {
+  test('onUpdate fires when video timeupdate event fires', async () => {
     const onUpdate = jest.fn();
     const video = makeVideo();
-    const session = new SessionController(video, makeChapters(5), null, false, 'reshuffle', onUpdate);
+    const session = await createSession({ video, onUpdate });
 
     video.dispatchEvent(new Event('timeupdate'));
 
@@ -189,10 +249,10 @@ describe('SessionController — onUpdate', () => {
     session.destroy();
   });
 
-  test('destroy() stops onUpdate from firing on timeupdate', () => {
+  test('destroy() stops onUpdate from firing on timeupdate', async () => {
     const onUpdate = jest.fn();
     const video = makeVideo();
-    const session = new SessionController(video, makeChapters(5), null, false, 'reshuffle', onUpdate);
+    const session = await createSession({ video, onUpdate });
 
     session.destroy();
     onUpdate.mockClear();

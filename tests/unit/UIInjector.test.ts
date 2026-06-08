@@ -17,14 +17,14 @@ function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   return {
     runtime: {
       lastError: null as { message: string } | null,
-      sendMessage: () => { },
+      sendMessage: () => {},
     },
     storage: {
       sync: storageArea,
       local: storageArea,
       onChanged: {
-        addListener: () => { },
-        removeListener: () => { },
+        addListener: () => {},
+        removeListener: () => {},
       },
     },
   };
@@ -90,6 +90,7 @@ function dragItem(fromIndex: number, toIndex: number): void {
 
 async function flushAll(): Promise<void> {
   jest.runAllTimers();
+  await Promise.resolve();
   await Promise.resolve();
 }
 
@@ -541,6 +542,51 @@ describe('UIInjector — navigation (stale queue regression)', () => {
 
     expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
     expect(document.querySelectorAll('.chapshuffle-item').length).toBe(8);
+
+    injector.destroy();
+  });
+
+  test('a session that finishes loading after navigation cannot mount stale chapters', async () => {
+    window.history.replaceState(null, '', '/watch?v=video-a');
+    const chromeMock = buildChromeMock();
+    const exclusionReads: Array<(result: Record<string, unknown>) => void> = [];
+    chromeMock.storage.local = {
+      ...chromeMock.storage.local,
+      get: (_keys, callback) => exclusionReads.push(callback),
+    };
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    jest.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(exclusionReads).toHaveLength(1);
+
+    document.body.innerHTML = '';
+    window.history.replaceState(null, '', '/watch?v=video-b');
+    addPlayerControls(document);
+    addChapterItems(document, 8);
+    addVideoElement(document);
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+    jest.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(exclusionReads).toHaveLength(2);
+
+    exclusionReads[0]({ chapterExclusions: { 'video-a': [60] } });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.getElementById('chapshuffle-btn')).toBeNull();
+
+    exclusionReads[1]({});
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.getElementById('chapshuffle-btn')).not.toBeNull();
+    expect(document.querySelectorAll('.chapshuffle-item')).toHaveLength(8);
 
     injector.destroy();
   });

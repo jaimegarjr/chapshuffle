@@ -8,7 +8,6 @@ import {
   settingsChangeFromChrome,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
-import { getExclusions } from '../exclusion/ExclusionManager';
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
@@ -24,6 +23,7 @@ export class UIInjector {
   private _minChapters = DEFAULT_SETTINGS.minChapters;
   private _queueEndBehavior: QueueEndBehavior = DEFAULT_SETTINGS.queueEndBehavior;
   private _tutorial: TutorialManager | null = null;
+  private _sessionGeneration = 0;
   private readonly _boundStorageChange: (changes: {
     [key: string]: chrome.storage.StorageChange;
   }) => void;
@@ -73,35 +73,33 @@ export class UIInjector {
   private _inject(chapters: Chapter[], controlsBar: Element): void {
     if (this._shell.isMounted) return;
 
+    const generation = ++this._sessionGeneration;
     const videoId =
       new URLSearchParams(this._doc.defaultView?.location.search ?? '').get('v') ?? null;
     const video = this._doc.querySelector<HTMLVideoElement>(VIDEO_SEL);
+    if (!video) return;
 
-    if (video) {
-      this._session = new SessionController(
-        video,
-        chapters,
-        videoId,
-        this._autoAdvance,
-        this._queueEndBehavior,
-        () => this._renderPanel()
-      );
-    }
+    SessionController.create({
+      video,
+      chapters,
+      videoId,
+      autoAdvance: this._autoAdvance,
+      queueEndBehavior: this._queueEndBehavior,
+      onUpdate: () => this._renderPanel(),
+    }).then((session) => {
+      if (generation !== this._sessionGeneration) {
+        session.destroy();
+        return;
+      }
 
-    this._shell.mount(controlsBar);
-    this._shell.updateShuffleState(this._autoAdvance);
-    this._renderPanel();
-    this._initTutorialIfNeeded();
-
-    if (videoId) {
-      getExclusions(videoId)
-        .then((exclusions) => {
-          if (!this._session) return;
-          this._session.applyExclusions(new Set(exclusions));
-          this._renderPanel();
-        })
-        .catch(() => {});
-    }
+      this._session = session;
+      session.autoAdvance = this._autoAdvance;
+      session.queueEndBehavior = this._queueEndBehavior;
+      this._shell.mount(controlsBar);
+      this._shell.updateShuffleState(this._autoAdvance);
+      this._renderPanel();
+      this._initTutorialIfNeeded();
+    });
   }
 
   private _initTutorialIfNeeded(): void {
@@ -167,6 +165,7 @@ export class UIInjector {
   }
 
   private _resetInjectedState(): void {
+    this._sessionGeneration++;
     try {
       chrome.runtime.sendMessage({ type: 'livestream-left' });
     } catch {}

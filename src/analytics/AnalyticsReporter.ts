@@ -5,64 +5,29 @@ import { validateEventPayload } from './EventPolicy';
 
 const debug = createDebugLogger('analytics');
 
-// Injected at build time by esbuild define. Absent (undefined) in builds without credentials.
-declare const __GA_MEASUREMENT_ID__: string | undefined;
-declare const __GA_API_SECRET__: string | undefined;
-
-const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
-const GA4_DEBUG_ENDPOINT = 'https://www.google-analytics.com/debug/mp/collect';
-
 export interface OutgoingPayload {
   client_id: string;
   events: Array<{ name: string; params: Record<string, unknown> }>;
 }
 
 /**
- * Reads GA4 credentials from build-time constants.
- * Returns null if either is absent — telemetry is silently disabled rather than erroring.
+ * Asks the background service worker to deliver a payload to GA4.
+ * The background holds the credentials and makes the actual fetch,
+ * since content scripts cannot make cross-origin requests directly.
  */
-function readCredentials(): { measurementId: string; apiSecret: string } | null {
-  const mid =
-    typeof __GA_MEASUREMENT_ID__ !== 'undefined' && __GA_MEASUREMENT_ID__
-      ? __GA_MEASUREMENT_ID__
-      : null;
-  const secret =
-    typeof __GA_API_SECRET__ !== 'undefined' && __GA_API_SECRET__ ? __GA_API_SECRET__ : null;
-
-  if (!mid || !secret) return null;
-  return { measurementId: mid, apiSecret: secret };
-}
-
-async function sendToGA4(
-  payload: OutgoingPayload,
-  measurementId: string,
-  apiSecret: string
-): Promise<void> {
-  const url = `${GA4_ENDPOINT}?measurement_id=${encodeURIComponent(measurementId)}&api_secret=${encodeURIComponent(apiSecret)}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    debug.log(`GA4 delivery failed — HTTP ${response.status}`);
+async function sendToGA4(payload: OutgoingPayload): Promise<void> {
+  const response = await chrome.runtime.sendMessage({ type: 'ga4-deliver', payload });
+  if (response?.error) {
+    debug.log(`GA4 delivery failed: ${response.error}`);
   }
 }
 
-async function validateWithDebugEndpoint(
-  payload: OutgoingPayload,
-  measurementId: string,
-  apiSecret: string
-): Promise<void> {
-  const url = `${GA4_DEBUG_ENDPOINT}?measurement_id=${encodeURIComponent(measurementId)}&api_secret=${encodeURIComponent(apiSecret)}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  if (response.ok) {
-    const body = await response.json();
-    debug.log('GA4 debug validation response:', JSON.stringify(body));
-  } else {
-    debug.log(`GA4 debug endpoint returned HTTP ${response.status}`);
+async function validateWithDebugEndpoint(payload: OutgoingPayload): Promise<void> {
+  const response = await chrome.runtime.sendMessage({ type: 'ga4-debug-validate', payload });
+  if (response?.result) {
+    debug.log('GA4 debug validation response:', JSON.stringify(response.result));
+  } else if (response?.error) {
+    debug.log(`GA4 debug endpoint error: ${response.error}`);
   }
 }
 
@@ -111,13 +76,7 @@ export class AnalyticsReporter {
 
       debug.log('validated telemetry payload:', JSON.stringify(payload));
 
-      const credentials = readCredentials();
-      if (!credentials) {
-        debug.log('no GA4 credentials configured — local sink only');
-        return;
-      }
-
-      await sendToGA4(payload, credentials.measurementId, credentials.apiSecret);
+      await sendToGA4(payload);
       debug.log('shuffle_session_started delivered to GA4');
     } catch (err) {
       debug.log('telemetry error (non-blocking):', err);
@@ -130,11 +89,6 @@ export class AnalyticsReporter {
    */
   async debugValidate(): Promise<void> {
     try {
-      const credentials = readCredentials();
-      if (!credentials) {
-        debug.log('debug validation skipped — no credentials');
-        return;
-      }
       const hasConsent = await getConsent();
       if (!hasConsent) {
         debug.log('debug validation skipped — no consent');
@@ -151,7 +105,7 @@ export class AnalyticsReporter {
         client_id: installId,
         events: [{ name: validated.name, params: validated.params }],
       };
-      await validateWithDebugEndpoint(payload, credentials.measurementId, credentials.apiSecret);
+      await validateWithDebugEndpoint(payload);
     } catch (err) {
       debug.log('debug validation error:', err);
     }

@@ -3,6 +3,11 @@ const fs = require('fs');
 const watch = process.argv.includes('--watch');
 const prod = process.argv.includes('--prod');
 
+// GA4 Measurement Protocol credentials — injected from environment, never committed.
+// Missing credentials are treated as telemetry disabled rather than a build failure.
+const gaMeasurementId = process.env.GA_MEASUREMENT_ID ?? '';
+const gaApiSecret = process.env.GA_API_SECRET ?? '';
+
 const config = {
   entryPoints: {
     content: 'src/content.ts',
@@ -16,7 +21,11 @@ const config = {
   sourcemap: watch ? 'inline' : false,
   jsx: 'automatic',
   jsxImportSource: 'preact',
-  define: { __DEV__: String(!prod) },
+  define: {
+    __DEV__: String(!prod),
+    __GA_MEASUREMENT_ID__: JSON.stringify(gaMeasurementId),
+    __GA_API_SECRET__: JSON.stringify(gaApiSecret),
+  },
   minify: prod,
 };
 

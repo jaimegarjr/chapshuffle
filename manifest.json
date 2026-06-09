@@ -4,12 +4,7 @@
   "version": "0.1.7",
   "description": "Shuffle YouTube video chapters for a randomized viewing experience.",
   "permissions": [
-    "activeTab",
-    "storage",
-    "tabs"
-  ],
-  "host_permissions": [
-    "https://www.youtube.com/*"
+    "storage"
   ],
   "icons": {
     "16": "icons/icon16.png",

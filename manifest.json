@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chap Shuffle",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Shuffle YouTube video chapters for a randomized viewing experience.",
   "permissions": [
     "storage"

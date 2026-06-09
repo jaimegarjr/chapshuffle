@@ -8,16 +8,12 @@ describe('manifest.json', () => {
     expect(manifest.manifest_version).toBe(3);
   });
 
-  test('declares activeTab, storage, and tabs permissions', () => {
-    expect(manifest.permissions).toEqual(
-      expect.arrayContaining(['activeTab', 'storage', 'tabs'])
-    );
-    expect(manifest.permissions.length).toBe(3);
+  test('declares only the storage permission', () => {
+    expect(manifest.permissions).toEqual(['storage']);
   });
 
-  test('host permission is scoped to youtube.com', () => {
-    expect(manifest.host_permissions).toContain('https://www.youtube.com/*');
-    expect(manifest.host_permissions.length).toBe(1);
+  test('does not declare redundant host permissions', () => {
+    expect(manifest.host_permissions).toBeUndefined();
   });
 
   test('content script matches youtube.com pages', () => {

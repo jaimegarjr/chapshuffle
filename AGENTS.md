@@ -18,6 +18,3 @@ Global guidance (commit/PR style, etc.) lives in `~/.agents/AGENTS.md`; follow i
 ## Project conventions
 
 - Unit tests live in `tests/unit/` (Jest + jsdom); e2e tests in `tests/e2e/` (Playwright).
-- The "Enable Shuffle" toggle controls auto-advance only — the queue panel stays usable
-  when it is off. Don't gate the whole extension behind it.
-- Releases go through `just release X.Y.Z`, which triggers the Prepare Release workflow.

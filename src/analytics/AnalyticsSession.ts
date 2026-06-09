@@ -26,8 +26,7 @@ export class AnalyticsSessionManager {
   }
 
   getOrCreate(now = Date.now()): SessionResult {
-    const isExpired =
-      this._lastActivity !== null && now - this._lastActivity > this._timeoutMs;
+    const isExpired = this._lastActivity !== null && now - this._lastActivity > this._timeoutMs;
 
     if (this._sessionId === null || isExpired) {
       this._sessionId = generateSessionId();

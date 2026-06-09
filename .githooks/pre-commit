@@ -1,0 +1,4 @@
+#!/bin/sh
+# Run the full CI lane before every commit. Enabled via `just install`
+# (git config core.hooksPath .githooks). Do not bypass with --no-verify.
+exec just ci

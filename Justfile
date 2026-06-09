@@ -1,9 +1,10 @@
 # chapshuffle – local development commands
 # Install: https://github.com/casey/just
 
-# Install dependencies
+# Install dependencies and enable the pre-commit CI hook
 install:
     yarn install
+    git config core.hooksPath .githooks
 
 # Run the test suite
 test:

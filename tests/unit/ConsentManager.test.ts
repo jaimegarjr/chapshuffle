@@ -7,8 +7,6 @@ import {
   subscribeConsent,
 } from '../../src/analytics/ConsentManager';
 
-// ─── chrome mock ─────────────────────────────────────────────────────────────
-
 function buildChromeMock(
   initialSync: Record<string, unknown> = {},
   initialLocal: Record<string, unknown> = {}
@@ -76,8 +74,6 @@ afterEach(() => {
   delete (global as unknown as { chrome: unknown }).chrome;
 });
 
-// ─── getConsent ───────────────────────────────────────────────────────────────
-
 describe('getConsent()', () => {
   test('returns false when storage is empty', async () => {
     expect(await getConsent()).toBe(false);
@@ -98,8 +94,6 @@ describe('getConsent()', () => {
   });
 });
 
-// ─── setConsent ──────────────────────────────────────────────────────────────
-
 describe('setConsent()', () => {
   test('persists true to sync storage', async () => {
     await setConsent(true);
@@ -112,7 +106,6 @@ describe('setConsent()', () => {
   });
 
   test('deletes install ID from local storage when consent is revoked', async () => {
-    // Seed an install ID in local storage
     (global as unknown as { chrome: ChromeMock }).chrome = buildChromeMock(
       { [ANALYTICS_CONSENT_KEY]: true },
       { [INSTALL_ID_KEY]: 'existing-id' }
@@ -130,8 +123,6 @@ describe('setConsent()', () => {
     expect(getChrome().storage.local._store[INSTALL_ID_KEY]).toBe('keep-me');
   });
 });
-
-// ─── getOrCreateInstallId ─────────────────────────────────────────────────────
 
 describe('getOrCreateInstallId()', () => {
   test('creates and persists a new ID when none exists', async () => {
@@ -163,8 +154,6 @@ describe('getOrCreateInstallId()', () => {
     expect(newId).not.toBe(originalId);
   });
 });
-
-// ─── subscribeConsent ────────────────────────────────────────────────────────
 
 describe('subscribeConsent()', () => {
   test('calls listener when analyticsConsent changes in sync storage', () => {

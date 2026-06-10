@@ -1,4 +1,11 @@
-import { AnalyticsSessionManager, SESSION_TIMEOUT_MS } from '../../src/analytics/AnalyticsSession';
+import {
+  ANALYTICS_SESSION_GET_OR_CREATE,
+  ANALYTICS_SESSION_TOUCH,
+  AnalyticsSessionManager,
+  AnalyticsSessionService,
+  RuntimeAnalyticsSession,
+  SESSION_TIMEOUT_MS,
+} from '../../src/analytics/AnalyticsSession';
 
 describe('AnalyticsSessionManager — getOrCreate()', () => {
   test('creates a new session on first call', () => {
@@ -133,5 +140,89 @@ describe('AnalyticsSessionManager — custom timeout', () => {
     const expired = mgr.getOrCreate(t + 5_001);
     expect(expired.sessionId).not.toBe(first.sessionId);
     expect(expired.isNew).toBe(true);
+  });
+});
+
+describe('AnalyticsSessionService — shared tab coordination', () => {
+  test('two tabs receive the same session ID while only the first starts it', () => {
+    const service = new AnalyticsSessionService();
+    const now = Date.now();
+
+    const firstTab = service.getOrCreate(now);
+    const secondTab = service.getOrCreate(now + 1);
+
+    expect(secondTab.sessionId).toBe(firstTab.sessionId);
+    expect(firstTab.isNew).toBe(true);
+    expect(secondTab.isNew).toBe(false);
+  });
+
+  test('activity in either tab refreshes the shared expiry', () => {
+    const service = new AnalyticsSessionService();
+    const now = Date.now();
+    const first = service.getOrCreate(now);
+
+    service.touch(now + SESSION_TIMEOUT_MS - 1);
+    const afterOriginalExpiry = service.getOrCreate(now + SESSION_TIMEOUT_MS + 1);
+
+    expect(afterOriginalExpiry.sessionId).toBe(first.sessionId);
+    expect(afterOriginalExpiry.isNew).toBe(false);
+  });
+
+  test('closing one tab does not change the session for another tab', () => {
+    const service = new AnalyticsSessionService();
+    const now = Date.now();
+    const firstTab = service.getOrCreate(now);
+
+    const remainingTab = service.getOrCreate(now + 1_000);
+
+    expect(remainingTab.sessionId).toBe(firstTab.sessionId);
+  });
+
+  test('a service-worker restart starts fresh in-memory session state', () => {
+    const now = Date.now();
+    const beforeRestart = new AnalyticsSessionService().getOrCreate(now);
+    const afterRestart = new AnalyticsSessionService().getOrCreate(now + 1);
+
+    expect(afterRestart.sessionId).not.toBe(beforeRestart.sessionId);
+    expect(afterRestart.isNew).toBe(true);
+  });
+});
+
+describe('RuntimeAnalyticsSession', () => {
+  afterEach(() => {
+    delete (global as unknown as { chrome?: unknown }).chrome;
+  });
+
+  test('requests and refreshes the service-worker-owned session', async () => {
+    const sendMessage = jest
+      .fn()
+      .mockResolvedValueOnce({ sessionId: 'shared-session', isNew: false })
+      .mockResolvedValueOnce({});
+    (global as unknown as { chrome: unknown }).chrome = {
+      runtime: { sendMessage },
+    };
+    const session = new RuntimeAnalyticsSession();
+
+    await expect(session.getOrCreate()).resolves.toEqual({
+      sessionId: 'shared-session',
+      isNew: false,
+    });
+    await expect(session.touch()).resolves.toBeUndefined();
+    expect(sendMessage).toHaveBeenNthCalledWith(1, {
+      type: ANALYTICS_SESSION_GET_OR_CREATE,
+    });
+    expect(sendMessage).toHaveBeenNthCalledWith(2, {
+      type: ANALYTICS_SESSION_TOUCH,
+    });
+  });
+
+  test('rejects an invalid background response', async () => {
+    (global as unknown as { chrome: unknown }).chrome = {
+      runtime: { sendMessage: jest.fn().mockResolvedValue({}) },
+    };
+
+    await expect(new RuntimeAnalyticsSession().getOrCreate()).rejects.toThrow(
+      'Invalid analytics session response'
+    );
   });
 });

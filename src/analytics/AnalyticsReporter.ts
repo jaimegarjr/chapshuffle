@@ -1,6 +1,6 @@
 import { createDebugLogger } from '../debug/DebugLogger';
 import { getConsent, getOrCreateInstallId } from './ConsentManager';
-import { AnalyticsSessionManager } from './AnalyticsSession';
+import { type AnalyticsSession, RuntimeAnalyticsSession } from './AnalyticsSession';
 import { validateEventPayload } from './EventPolicy';
 
 const debug = createDebugLogger('analytics');
@@ -32,10 +32,10 @@ async function validateWithDebugEndpoint(payload: OutgoingPayload): Promise<void
 }
 
 export class AnalyticsReporter {
-  private readonly _session: AnalyticsSessionManager;
+  private readonly _session: AnalyticsSession;
 
-  constructor(session?: AnalyticsSessionManager) {
-    this._session = session ?? new AnalyticsSessionManager();
+  constructor(session?: AnalyticsSession) {
+    this._session = session ?? new RuntimeAnalyticsSession();
   }
 
   /**
@@ -52,7 +52,7 @@ export class AnalyticsReporter {
       }
 
       const installId = await getOrCreateInstallId();
-      const { sessionId, isNew } = this._session.getOrCreate();
+      const { sessionId, isNew } = await this._session.getOrCreate();
 
       if (!isNew) {
         debug.log('analytics session still active — no event emitted');
@@ -96,7 +96,7 @@ export class AnalyticsReporter {
         return;
       }
       const installId = await getOrCreateInstallId();
-      const { sessionId } = this._session.getOrCreate();
+      const { sessionId } = await this._session.getOrCreate();
       const validated = validateEventPayload('shuffle_session_started', {
         session_id: sessionId,
         engagement_time_msec: 1,
@@ -113,8 +113,12 @@ export class AnalyticsReporter {
     }
   }
 
-  touchSession(): void {
-    this._session.touch();
+  async touchSession(): Promise<void> {
+    try {
+      await this._session.touch();
+    } catch (err) {
+      debug.log('analytics session refresh error:', err);
+    }
   }
 }
 

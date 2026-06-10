@@ -1,5 +1,8 @@
 import { AnalyticsReporter } from '../../src/analytics/AnalyticsReporter';
-import { AnalyticsSessionManager } from '../../src/analytics/AnalyticsSession';
+import {
+  type AnalyticsSession,
+  AnalyticsSessionManager,
+} from '../../src/analytics/AnalyticsSession';
 import { ANALYTICS_CONSENT_KEY, INSTALL_ID_KEY } from '../../src/analytics/ConsentManager';
 
 function buildChromeMock(
@@ -61,7 +64,18 @@ function consentedChrome(installId?: string) {
 
 function makeReporter(timeoutMs?: number) {
   const session = new AnalyticsSessionManager(timeoutMs);
-  return new AnalyticsReporter(session);
+  return new AnalyticsReporter(sessionClient(session));
+}
+
+function sessionClient(manager: AnalyticsSessionManager): AnalyticsSession {
+  return {
+    async getOrCreate() {
+      return manager.getOrCreate();
+    },
+    async touch() {
+      manager.touch();
+    },
+  };
 }
 
 describe('AnalyticsReporter — consent gating', () => {
@@ -98,7 +112,7 @@ describe('AnalyticsReporter — session lifecycle', () => {
   test('does not create a new session within the timeout window', async () => {
     setChrome(consentedChrome('client-1'));
     const session = new AnalyticsSessionManager();
-    const reporter = new AnalyticsReporter(session);
+    const reporter = new AnalyticsReporter(sessionClient(session));
 
     const t = Date.now();
     session.getOrCreate(t);
@@ -109,7 +123,7 @@ describe('AnalyticsReporter — session lifecycle', () => {
   test('creates a fresh session after timeout', async () => {
     setChrome(consentedChrome('client-2'));
     const session = new AnalyticsSessionManager(100);
-    const reporter = new AnalyticsReporter(session);
+    const reporter = new AnalyticsReporter(sessionClient(session));
 
     const t = Date.now();
     const { sessionId: first } = session.getOrCreate(t);

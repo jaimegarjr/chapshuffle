@@ -5,6 +5,38 @@ export interface SessionResult {
   isNew: boolean;
 }
 
+export interface AnalyticsSession {
+  getOrCreate(): Promise<SessionResult>;
+  touch(): Promise<void>;
+}
+
+export const ANALYTICS_SESSION_GET_OR_CREATE = 'analytics-session-get-or-create';
+export const ANALYTICS_SESSION_TOUCH = 'analytics-session-touch';
+
+export class RuntimeAnalyticsSession implements AnalyticsSession {
+  async getOrCreate(): Promise<SessionResult> {
+    const response = await chrome.runtime.sendMessage({
+      type: ANALYTICS_SESSION_GET_OR_CREATE,
+    });
+    if (!response || typeof response.sessionId !== 'string') {
+      throw new Error(response?.error ?? 'Invalid analytics session response');
+    }
+    return {
+      sessionId: response.sessionId,
+      isNew: response.isNew === true,
+    };
+  }
+
+  async touch(): Promise<void> {
+    const response = await chrome.runtime.sendMessage({
+      type: ANALYTICS_SESSION_TOUCH,
+    });
+    if (response?.error) {
+      throw new Error(response.error);
+    }
+  }
+}
+
 export class AnalyticsSessionManager {
   private _sessionId: string | null = null;
   private _lastActivity: number | null = null;
@@ -44,5 +76,21 @@ export class AnalyticsSessionManager {
 
   get lastActivity(): number | null {
     return this._lastActivity;
+  }
+}
+
+export class AnalyticsSessionService {
+  private readonly _manager: AnalyticsSessionManager;
+
+  constructor(manager?: AnalyticsSessionManager) {
+    this._manager = manager ?? new AnalyticsSessionManager();
+  }
+
+  getOrCreate(now = Date.now()): SessionResult {
+    return this._manager.getOrCreate(now);
+  }
+
+  touch(now = Date.now()): void {
+    this._manager.touch(now);
   }
 }

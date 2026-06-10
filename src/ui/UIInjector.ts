@@ -94,6 +94,10 @@ export class UIInjector {
       autoAdvance: this._autoAdvance,
       queueEndBehavior: this._queueEndBehavior,
       onUpdate: () => this._renderPanel(),
+      onAnalyticsEvent: ({ name, params }) =>
+        this._queueAnalytics(video, (sessionId) =>
+          analyticsReporter.notifyProductEvent(name, params, sessionId)
+        ),
     }).then((session) => {
       if (generation !== this._sessionGeneration) {
         session.destroy();
@@ -193,9 +197,16 @@ export class UIInjector {
     this._playingHandler = null;
   }
 
-  private _resetInjectedState(): void {
+  private _resetInjectedState(reason: 'navigation_away' | 'tab_closed' = 'navigation_away'): void {
     this._sessionGeneration++;
     this._teardownPlaybackTelemetry();
+    if (reason === 'tab_closed') {
+      analyticsReporter.markSessionInactive(reason).catch(() => {});
+    } else {
+      this._analyticsQueue = this._analyticsQueue
+        .then(() => analyticsReporter.markSessionInactive(reason))
+        .catch(() => {});
+    }
     this._video = null;
     this._analyticsVideoSessionId = null;
     try {
@@ -215,6 +226,6 @@ export class UIInjector {
     this._unsubscribeSettings = null;
     this._tutorial?.destroy();
     this._tutorial = null;
-    this._resetInjectedState();
+    this._resetInjectedState('tab_closed');
   }
 }

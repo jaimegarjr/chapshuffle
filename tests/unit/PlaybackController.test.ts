@@ -69,6 +69,42 @@ describe('PlaybackController — auto-advance', () => {
     ctrl.destroy();
   });
 
+  test('reports a completed chapter using queue position only', () => {
+    const video = buildMockVideo(0);
+    const onChapterCompleted = jest.fn();
+    const ctrl = new PlaybackController(
+      video as unknown as HTMLVideoElement,
+      CHAPTERS,
+      identity,
+      true,
+      'reshuffle',
+      onChapterCompleted
+    );
+
+    video.tick(60);
+
+    expect(onChapterCompleted).toHaveBeenCalledWith(1, CHAPTERS.length);
+    ctrl.destroy();
+  });
+
+  test('does not report chapter completion during linear playback', () => {
+    const video = buildMockVideo(0);
+    const onChapterCompleted = jest.fn();
+    const ctrl = new PlaybackController(
+      video as unknown as HTMLVideoElement,
+      CHAPTERS,
+      identity,
+      false,
+      'reshuffle',
+      onChapterCompleted
+    );
+
+    video.tick(60);
+
+    expect(onChapterCompleted).not.toHaveBeenCalled();
+    ctrl.destroy();
+  });
+
   test('wrap-around: advances to next after last finite-boundary chapter', () => {
     const video = buildMockVideo(0);
     const ctrl = new PlaybackController(video as unknown as HTMLVideoElement, CHAPTERS, identity);

@@ -1,5 +1,6 @@
 import {
   ANALYTICS_SESSION_GET_OR_CREATE,
+  ANALYTICS_SESSION_MARK_INACTIVE,
   ANALYTICS_SESSION_RESET,
   ANALYTICS_SESSION_TOUCH,
   AnalyticsSessionManager,
@@ -199,6 +200,32 @@ describe('AnalyticsSessionService — shared tab coordination', () => {
     expect(afterReset.sessionId).not.toBe(beforeReset.sessionId);
     expect(afterReset.isNew).toBe(true);
   });
+
+  test('reports the last inactivity reason when the session actually expires', () => {
+    const service = new AnalyticsSessionService();
+    const now = Date.now();
+    const current = service.getOrCreate(now);
+
+    service.markInactive('navigation_away');
+    const next = service.getOrCreate(now + SESSION_TIMEOUT_MS + 1);
+
+    expect(next.endedSession).toEqual({
+      sessionId: current.sessionId,
+      reason: 'navigation_away',
+    });
+  });
+
+  test('continued playback clears a pending tab-close reason', () => {
+    const service = new AnalyticsSessionService();
+    const now = Date.now();
+    service.getOrCreate(now);
+
+    service.markInactive('tab_closed');
+    service.touch(now + 1_000);
+    const next = service.getOrCreate(now + SESSION_TIMEOUT_MS + 1_001);
+
+    expect(next.endedSession?.reason).toBe('expiry');
+  });
 });
 
 describe('RuntimeAnalyticsSession', () => {
@@ -211,6 +238,7 @@ describe('RuntimeAnalyticsSession', () => {
       .fn()
       .mockResolvedValueOnce({ sessionId: 'shared-session', isNew: false })
       .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({});
     (global as unknown as { chrome: unknown }).chrome = {
       runtime: { sendMessage },
@@ -222,6 +250,7 @@ describe('RuntimeAnalyticsSession', () => {
       isNew: false,
     });
     await expect(session.touch()).resolves.toBeUndefined();
+    await expect(session.markInactive('navigation_away')).resolves.toBeUndefined();
     await expect(resetRuntimeAnalyticsSession()).resolves.toBeUndefined();
     expect(sendMessage).toHaveBeenNthCalledWith(1, {
       type: ANALYTICS_SESSION_GET_OR_CREATE,
@@ -230,6 +259,10 @@ describe('RuntimeAnalyticsSession', () => {
       type: ANALYTICS_SESSION_TOUCH,
     });
     expect(sendMessage).toHaveBeenNthCalledWith(3, {
+      type: ANALYTICS_SESSION_MARK_INACTIVE,
+      reason: 'navigation_away',
+    });
+    expect(sendMessage).toHaveBeenNthCalledWith(4, {
       type: ANALYTICS_SESSION_RESET,
     });
   });

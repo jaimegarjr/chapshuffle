@@ -13,6 +13,7 @@ export class PlaybackController {
   private _queueEndBehavior: QueueEndBehavior;
   private _loopMode = false;
   private readonly _bound: () => void;
+  private readonly _onChapterCompleted: (queuePosition: number, queueLength: number) => void;
   private _seekTarget: number | null = null;
   private _suppressCount = 0;
 
@@ -21,11 +22,13 @@ export class PlaybackController {
     chapters: Chapter[],
     shuffleFn?: ShuffleFn,
     autoAdvance = true,
-    queueEndBehavior: QueueEndBehavior = 'reshuffle'
+    queueEndBehavior: QueueEndBehavior = 'reshuffle',
+    onChapterCompleted: (queuePosition: number, queueLength: number) => void = () => {}
   ) {
     this._autoAdvance = autoAdvance;
     this._queueEndBehavior = queueEndBehavior;
     this._video = videoEl;
+    this._onChapterCompleted = onChapterCompleted;
     this._timeline = new PlaybackTimeline(chapters, shuffleFn);
     this._bound = this._onTimeUpdate.bind(this);
     if (videoEl.currentTime > 0) {
@@ -122,6 +125,9 @@ export class PlaybackController {
     if (currentTime < endSeconds) return;
 
     if (this._loopMode) {
+      if (this._autoAdvance) {
+        this._onChapterCompleted(this._timeline.currentIndex + 1, this._timeline.queue.length);
+      }
       const chapter = this._timeline.currentChapter;
       if (chapter) {
         debug.log(`loop - seeking back to start of "${chapter.title}" at ${chapter.startSeconds}s`);
@@ -133,6 +139,7 @@ export class PlaybackController {
     }
 
     if (!this._autoAdvance) return;
+    this._onChapterCompleted(this._timeline.currentIndex + 1, this._timeline.queue.length);
 
     if (this._timeline.isLastChapter) {
       debug.log(`queue end - behavior=${this._queueEndBehavior}`);

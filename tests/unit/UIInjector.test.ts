@@ -9,6 +9,8 @@ jest.mock('../../src/analytics/AnalyticsReporter', () => ({
   analyticsReporter: {
     notifyEligiblePlayback: jest.fn().mockResolvedValue(undefined),
     notifyActivePlayback: jest.fn().mockResolvedValue(undefined),
+    notifyProductEvent: jest.fn().mockResolvedValue(undefined),
+    markSessionInactive: jest.fn().mockResolvedValue(undefined),
     touchSession: jest.fn(),
   },
 }));
@@ -548,6 +550,8 @@ describe('UIInjector — cleanup', () => {
   afterEach(() => jest.useRealTimers());
 
   test('destroy() removes all injected elements', async () => {
+    const inactiveSpy = analyticsReporter.markSessionInactive as jest.Mock;
+    inactiveSpy.mockClear();
     addPlayerControls(document);
     addChapterItems(document, 5);
     addVideoElement(document);
@@ -557,6 +561,7 @@ describe('UIInjector — cleanup', () => {
     injector.destroy();
     expect(document.getElementById('chapshuffle-btn')).toBeNull();
     expect(document.getElementById('chapshuffle-queue')).toBeNull();
+    expect(inactiveSpy).toHaveBeenCalledWith('tab_closed');
   });
 });
 

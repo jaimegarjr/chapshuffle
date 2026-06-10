@@ -2,6 +2,7 @@ import { settings } from './persistence/PersistenceManager';
 import type { OutgoingPayload } from './analytics/AnalyticsReporter';
 import {
   ANALYTICS_SESSION_GET_OR_CREATE,
+  ANALYTICS_SESSION_MARK_INACTIVE,
   ANALYTICS_SESSION_RESET,
   ANALYTICS_SESSION_TOUCH,
   AnalyticsSessionService,
@@ -64,6 +65,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   } else if (msg?.type === ANALYTICS_SESSION_RESET) {
     analyticsSession.reset();
     sendResponse({});
+  } else if (msg?.type === ANALYTICS_SESSION_MARK_INACTIVE) {
+    if (msg.reason === 'navigation_away' || msg.reason === 'tab_closed') {
+      analyticsSession.markInactive(msg.reason);
+      sendResponse({});
+    } else {
+      sendResponse({ error: 'invalid session end reason' });
+    }
   } else if (msg?.type === 'ga4-deliver') {
     const credentials = readCredentials();
     if (!credentials) {

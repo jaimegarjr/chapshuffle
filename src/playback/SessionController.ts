@@ -10,7 +10,25 @@ export interface SessionControllerOptions {
   autoAdvance: boolean;
   queueEndBehavior: QueueEndBehavior;
   onUpdate: () => void;
+  onAnalyticsEvent?: (event: SessionAnalyticsEvent) => void;
 }
+
+export type SessionAnalyticsEvent =
+  | {
+      name: 'chapter_completed';
+      params: { queue_position: number; queue_length: number };
+    }
+  | {
+      name: 'chapter_skipped';
+      params: { queue_position: number; target_position: number; queue_length: number };
+    }
+  | { name: 'reshuffle_used'; params: Record<string, never> }
+  | { name: 'exclusions_updated'; params: { excluded_count: number } }
+  | { name: 'loop_toggled'; params: { enabled: boolean } }
+  | {
+      name: 'queue_reordered';
+      params: { from_position: number; to_position: number; queue_length: number };
+    };
 
 export interface SessionSnapshot {
   queue: Chapter[];
@@ -38,6 +56,7 @@ export class SessionController {
   private _excluded: Set<number> = new Set();
   private readonly _boundOnUpdate: () => void;
   private readonly _video: HTMLVideoElement;
+  private readonly _onAnalyticsEvent: (event: SessionAnalyticsEvent) => void;
 
   static async create(options: SessionControllerOptions): Promise<SessionController> {
     let storedExclusions: number[] = [];
@@ -54,7 +73,8 @@ export class SessionController {
       options.autoAdvance,
       options.queueEndBehavior,
       options.onUpdate,
-      new Set(storedExclusions)
+      new Set(storedExclusions),
+      options.onAnalyticsEvent
     );
   }
 
@@ -65,7 +85,8 @@ export class SessionController {
     autoAdvance: boolean,
     queueEndBehavior: QueueEndBehavior,
     onUpdate: () => void,
-    initialExclusions: Set<number> = new Set()
+    initialExclusions: Set<number> = new Set(),
+    onAnalyticsEvent: (event: SessionAnalyticsEvent) => void = () => {}
   ) {
     this._video = video;
     this._allChapters = chapters;
@@ -75,8 +96,14 @@ export class SessionController {
       chapters,
       undefined,
       autoAdvance,
-      queueEndBehavior
+      queueEndBehavior,
+      (queuePosition, queueLength) =>
+        onAnalyticsEvent({
+          name: 'chapter_completed',
+          params: { queue_position: queuePosition, queue_length: queueLength },
+        })
     );
+    this._onAnalyticsEvent = onAnalyticsEvent;
     this._excluded = this._normalizeInitialExclusions(initialExclusions);
     this._controller.setExcluded(this._excluded);
     this._boundOnUpdate = onUpdate;
@@ -105,32 +132,75 @@ export class SessionController {
   perform(action: SessionAction): void {
     switch (action.type) {
       case 'seek':
-        this._controller.seekToChapter(action.index);
+        this._skipTo(action.index);
         return;
       case 'previous':
-        this._controller.seekToChapter(this._controller.currentIndex - 1);
+        this._skipTo(this._controller.currentIndex - 1);
         return;
       case 'next':
-        this._controller.seekToChapter(this._controller.currentIndex + 1);
+        this._skipTo(this._controller.currentIndex + 1);
         return;
       case 'reshuffle':
         this._controller.reshuffle();
+        this._onAnalyticsEvent({ name: 'reshuffle_used', params: {} });
         return;
       case 'toggle-loop':
         this._loopMode = !this._loopMode;
         this._controller.loopMode = this._loopMode;
+        this._onAnalyticsEvent({
+          name: 'loop_toggled',
+          params: { enabled: this._loopMode },
+        });
         return;
       case 'reorder':
-        this._controller.reorderQueue(action.fromIndex, action.toIndex);
+        if (
+          action.fromIndex !== action.toIndex &&
+          this._controller.reorderQueue(action.fromIndex, action.toIndex)
+        ) {
+          this._onAnalyticsEvent({
+            name: 'queue_reordered',
+            params: {
+              from_position: action.fromIndex + 1,
+              to_position: action.toIndex + 1,
+              queue_length: this._controller.queue.length,
+            },
+          });
+        }
         return;
       case 'apply-exclusions':
-        this._applyExclusions(action.excludedSeconds);
+        if (this._applyExclusions(action.excludedSeconds)) {
+          this._onAnalyticsEvent({
+            name: 'exclusions_updated',
+            params: { excluded_count: this._excluded.size },
+          });
+        }
     }
   }
 
-  private _applyExclusions(nextExcluded: Set<number>): void {
+  private _skipTo(targetIndex: number): void {
+    const currentIndex = this._controller.currentIndex;
+    const queueLength = this._controller.queue.length;
+    if (targetIndex < 0 || targetIndex >= queueLength || targetIndex === currentIndex) return;
+    this._controller.seekToChapter(targetIndex);
+    this._onAnalyticsEvent({
+      name: 'chapter_skipped',
+      params: {
+        queue_position: currentIndex + 1,
+        target_position: targetIndex + 1,
+        queue_length: queueLength,
+      },
+    });
+  }
+
+  private _applyExclusions(nextExcluded: Set<number>): boolean {
     const normalized = this._knownExclusions(nextExcluded);
-    if (this._allChapters.length > 0 && normalized.size >= this._allChapters.length) return;
+    if (this._allChapters.length > 0 && normalized.size >= this._allChapters.length) return false;
+    if (
+      normalized.size === this._excluded.size &&
+      [...normalized].every((startSeconds) => this._excluded.has(startSeconds))
+    ) {
+      return false;
+    }
 
     const toRestore = this._allChapters.filter(
       (c) => this._excluded.has(c.startSeconds) && !normalized.has(c.startSeconds)
@@ -143,6 +213,7 @@ export class SessionController {
     if (this._videoId) {
       setExclusions(this._videoId, [...this._excluded]).catch(() => {});
     }
+    return true;
   }
 
   private _knownExclusions(excluded: Set<number>): Set<number> {

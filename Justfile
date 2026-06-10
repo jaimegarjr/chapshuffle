@@ -30,6 +30,15 @@ build:
 dev:
     yarn watch
 
+# Mirror shared/branding into docs/ after editing branding assets; commit the result
+# (dist/ syncs automatically on build, and unit tests fail if the docs mirror drifts)
+sync-branding:
+    yarn sync:branding
+
+# Serve the public homepage over HTTP (CSS mask icons don't load via file://)
+serve-docs port="8000":
+    npx serve docs -l {{port}}
+
 # Format source files with Prettier
 format:
     yarn format

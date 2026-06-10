@@ -1,5 +1,7 @@
 const esbuild = require('esbuild');
 const fs = require('fs');
+const path = require('path');
+const { copyBrandingAssets } = require('./scripts/sync-branding');
 const watch = process.argv.includes('--watch');
 const prod = process.argv.includes('--prod');
 
@@ -32,6 +34,7 @@ const config = {
 function copyStatic() {
   fs.mkdirSync('dist', { recursive: true });
   fs.mkdirSync('dist/icons', { recursive: true });
+  copyBrandingAssets(path.resolve('dist/assets/branding'));
   fs.copyFileSync('manifest.json', 'dist/manifest.json');
   fs.copyFileSync('src/popup/popup.html', 'dist/popup.html');
   for (const size of [16, 48, 128]) {
@@ -44,7 +47,9 @@ async function main() {
   const ctx = await esbuild.context(config);
   if (watch) {
     await ctx.watch();
-    console.log('[chapshuffle] watching — reload the extension card in chrome://extensions after saving');
+    console.log(
+      '[chapshuffle] watching — reload the extension card in chrome://extensions after saving'
+    );
   } else {
     await ctx.rebuild();
     await ctx.dispose();

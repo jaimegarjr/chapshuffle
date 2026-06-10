@@ -9,6 +9,7 @@
     "test:e2e": "playwright test",
     "build": "node build.js",
     "build:prod": "node build.js --prod",
+    "sync:branding": "node scripts/sync-branding.js",
     "watch": "node build.js --watch",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,html,css}\" \"tests/e2e/**/*.{ts,tsx,html}\" playwright.config.ts",

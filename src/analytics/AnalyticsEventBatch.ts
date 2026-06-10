@@ -1,4 +1,7 @@
+import { createDebugLogger } from '../debug/DebugLogger';
 import type { OutgoingPayload } from './AnalyticsReporter';
+
+const debug = createDebugLogger('analytics:batch');
 
 export type AnalyticsEvent = OutgoingPayload['events'][number];
 type Deliver = (payload: OutgoingPayload) => Promise<void>;
@@ -67,10 +70,14 @@ export class AnalyticsEventBatch {
 
     this._inFlight = Promise.all(
       [...payloads].map(async ([clientId, events]) => {
+        const payload: OutgoingPayload = { client_id: clientId, events };
         try {
-          await this._deliver({ client_id: clientId, events });
-        } catch {
+          debug.log('delivering batch:', JSON.stringify(payload));
+          await this._deliver(payload);
+          debug.log(`batch of ${events.length} event(s) delivered to GA4`);
+        } catch (err) {
           // Failed telemetry is intentionally discarded rather than retried or persisted.
+          debug.log('batch delivery failed — discarding:', err);
         }
       })
     ).then(() => undefined);

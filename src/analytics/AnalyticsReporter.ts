@@ -81,6 +81,9 @@ export class AnalyticsReporter {
         if (videoStarted) events.push(videoStarted);
       }
 
+      if (events.length === 0) {
+        debug.log('session and video already tracked — no event emitted');
+      }
       this._batch.enqueue(installId, events);
       return sessionId;
     } catch (err) {

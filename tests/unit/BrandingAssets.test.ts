@@ -43,4 +43,17 @@ describe('shared branding assets', () => {
     expect(fogScript).toContain('prefers-reduced-motion: reduce');
     expect(fogScript).toContain('reducedMotion.matches');
   });
+
+  test('the public homepage exposes install, trial, support, source, and privacy destinations', () => {
+    expect(docsHtml).toContain(
+      'https://chromewebstore.google.com/detail/chap-shuffle/dabkcpempohenngjmnaakjaajidnepda'
+    );
+    expect(docsHtml).toContain('https://youtu.be/pgQRcqh1u7U');
+    expect(docsHtml).toContain('https://ko-fi.com/jaimegarjr');
+    expect(docsHtml).toContain('https://github.com/jaimegarjr/chapshuffle');
+    expect(docsHtml).toContain('href="#privacy"');
+    expect(docsHtml).toContain('Shuffle once, keep listening');
+    expect(docsHtml).toContain('Shape the queue');
+    expect(docsHtml).toContain('Stay inside YouTube');
+  });
 });

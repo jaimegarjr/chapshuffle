@@ -4,7 +4,7 @@
 export type AllowedEventName = 'shuffle_session_started';
 
 const ALLOWED_PARAMS: Record<AllowedEventName, ReadonlySet<string>> = {
-  shuffle_session_started: new Set(['session_id', 'engagement_time_msec']),
+  shuffle_session_started: new Set(['session_id', 'engagement_time_msec', 'extension_version']),
 };
 
 export const ALLOWED_EVENT_NAMES: ReadonlySet<string> = new Set(

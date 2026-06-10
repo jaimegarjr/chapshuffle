@@ -27,7 +27,11 @@ function buildChromeMock(
   });
 
   return {
-    runtime: { lastError: null as { message: string } | null },
+    runtime: {
+      lastError: null as { message: string } | null,
+      getManifest: () => ({ version: '9.9.9-test' }),
+      sendMessage: jest.fn().mockResolvedValue({}),
+    },
     storage: {
       sync: storageArea(syncStore),
       local: storageArea(localStore),
@@ -148,6 +152,31 @@ describe('AnalyticsReporter — failure isolation', () => {
       },
     };
     await expect(makeReporter().notifyEligiblePlayback()).resolves.toBeUndefined();
+  });
+});
+
+describe('AnalyticsReporter — outgoing payload shape', () => {
+  test('delivered payload carries session_id, engagement_time_msec, and extension version', async () => {
+    const chrome = consentedChrome('client-shape');
+    setChrome(chrome);
+    await makeReporter().notifyEligiblePlayback();
+
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'ga4-deliver',
+      payload: {
+        client_id: 'client-shape',
+        events: [
+          {
+            name: 'shuffle_session_started',
+            params: {
+              session_id: expect.any(String),
+              engagement_time_msec: 1,
+              extension_version: '9.9.9-test',
+            },
+          },
+        ],
+      },
+    });
   });
 });
 

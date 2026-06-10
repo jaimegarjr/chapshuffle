@@ -62,6 +62,7 @@ export class AnalyticsReporter {
       const validated = validateEventPayload('shuffle_session_started', {
         session_id: sessionId,
         engagement_time_msec: 1,
+        extension_version: chrome.runtime.getManifest().version,
       });
 
       if (!validated) {
@@ -99,6 +100,7 @@ export class AnalyticsReporter {
       const validated = validateEventPayload('shuffle_session_started', {
         session_id: sessionId,
         engagement_time_msec: 1,
+        extension_version: chrome.runtime.getManifest().version,
       });
       if (!validated) return;
       const payload: OutgoingPayload = {

@@ -14,10 +14,15 @@ describe('validateEventPayload()', () => {
     const result = validateEventPayload('shuffle_session_started', {
       session_id: 'abc',
       engagement_time_msec: 1,
+      extension_version: '1.2.3',
     });
     expect(result).not.toBeNull();
     expect(result!.name).toBe('shuffle_session_started');
-    expect(result!.params).toEqual({ session_id: 'abc', engagement_time_msec: 1 });
+    expect(result!.params).toEqual({
+      session_id: 'abc',
+      engagement_time_msec: 1,
+      extension_version: '1.2.3',
+    });
   });
 
   test('strips undeclared parameter keys', () => {

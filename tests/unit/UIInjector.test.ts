@@ -1,4 +1,12 @@
 import { UIInjector } from '../../src/ui/UIInjector';
+import { analyticsReporter } from '../../src/analytics/AnalyticsReporter';
+
+jest.mock('../../src/analytics/AnalyticsReporter', () => ({
+  analyticsReporter: {
+    notifyEligiblePlayback: jest.fn().mockResolvedValue(undefined),
+    touchSession: jest.fn(),
+  },
+}));
 
 function buildChromeMock(initialStore: Record<string, unknown> = {}) {
   const store = { ...initialStore };
@@ -534,6 +542,82 @@ describe('UIInjector — cleanup', () => {
     injector.destroy();
     expect(document.getElementById('chapshuffle-btn')).toBeNull();
     expect(document.getElementById('chapshuffle-queue')).toBeNull();
+  });
+});
+
+describe('UIInjector — playback telemetry eligibility', () => {
+  const notifySpy = analyticsReporter.notifyEligiblePlayback as jest.Mock;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    notifySpy.mockClear();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  async function injectWith(shuffleEnabled: boolean) {
+    const chromeMock = buildChromeMock({ shuffleEnabled });
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    const video = addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    return { injector, video, chromeMock };
+  }
+
+  test('playback start with Auto-advance on notifies eligible playback', async () => {
+    const { injector, video } = await injectWith(true);
+
+    video.dispatchEvent(new Event('playing'));
+
+    expect(notifySpy).toHaveBeenCalledTimes(1);
+    injector.destroy();
+  });
+
+  test('playback start with Auto-advance off does not notify', async () => {
+    const { injector, video } = await injectWith(false);
+
+    video.dispatchEvent(new Event('playing'));
+
+    expect(notifySpy).not.toHaveBeenCalled();
+    injector.destroy();
+  });
+
+  test('turning Auto-advance off detaches telemetry from later playback', async () => {
+    const { injector, video, chromeMock } = await injectWith(true);
+
+    chromeMock.storage.onChanged.emit({
+      shuffleEnabled: { oldValue: true, newValue: false },
+    });
+    await flushAll();
+    video.dispatchEvent(new Event('playing'));
+
+    expect(notifySpy).not.toHaveBeenCalled();
+    injector.destroy();
+  });
+
+  test('turning Auto-advance on during active playback notifies immediately', async () => {
+    const { injector, video, chromeMock } = await injectWith(false);
+    Object.defineProperty(video, 'paused', { value: false, configurable: true });
+
+    chromeMock.storage.onChanged.emit({
+      shuffleEnabled: { oldValue: false, newValue: true },
+    });
+    await flushAll();
+
+    expect(notifySpy).toHaveBeenCalledTimes(1);
+    injector.destroy();
+  });
+
+  test('navigation tears down the telemetry listener for the old video', async () => {
+    const { injector, video } = await injectWith(true);
+
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+    video.dispatchEvent(new Event('playing'));
+
+    expect(notifySpy).not.toHaveBeenCalled();
+    injector.destroy();
   });
 });
 

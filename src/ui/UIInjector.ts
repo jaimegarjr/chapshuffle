@@ -11,6 +11,7 @@ import {
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
+import { analyticsReporter } from '../analytics/AnalyticsReporter';
 
 const VIDEO_SEL = 'video';
 
@@ -25,6 +26,8 @@ export class UIInjector {
   private _tutorial: TutorialManager | null = null;
   private _sessionGeneration = 0;
   private _unsubscribeSettings: (() => void) | null = null;
+  private _video: HTMLVideoElement | null = null;
+  private _playingHandler: (() => void) | null = null;
 
   constructor(doc: Document = document) {
     this._doc = doc;
@@ -55,6 +58,11 @@ export class UIInjector {
       this._autoAdvance = shuffleEnabled;
       if (this._session) this._session.autoAdvance = this._autoAdvance;
       this._shell.updateShuffleState(this._autoAdvance);
+      if (this._autoAdvance && this._video) {
+        this._setupPlaybackTelemetry(this._video);
+      } else if (!this._autoAdvance) {
+        this._teardownPlaybackTelemetry();
+      }
     }
     if (queueEndBehavior !== undefined) {
       this._queueEndBehavior = queueEndBehavior;
@@ -89,12 +97,16 @@ export class UIInjector {
       }
 
       this._session = session;
+      this._video = video;
       session.autoAdvance = this._autoAdvance;
       session.queueEndBehavior = this._queueEndBehavior;
       this._shell.mount(controlsBar);
       this._shell.updateShuffleState(this._autoAdvance);
       this._renderPanel();
       this._initTutorialIfNeeded();
+      if (this._autoAdvance) {
+        this._setupPlaybackTelemetry(video);
+      }
     });
   }
 
@@ -126,8 +138,34 @@ export class UIInjector {
     });
   }
 
+  private _setupPlaybackTelemetry(video: HTMLVideoElement): void {
+    // Remove any existing listener before attaching a new one.
+    this._teardownPlaybackTelemetry();
+
+    if (!video.paused && !video.ended) {
+      // Video is already playing — notify immediately.
+      analyticsReporter.notifyEligiblePlayback().catch(() => {});
+      return;
+    }
+
+    // Wait for the video to actually start playing.
+    this._playingHandler = (): void => {
+      analyticsReporter.notifyEligiblePlayback().catch(() => {});
+    };
+    video.addEventListener('playing', this._playingHandler);
+  }
+
+  private _teardownPlaybackTelemetry(): void {
+    if (this._playingHandler && this._video) {
+      this._video.removeEventListener('playing', this._playingHandler);
+    }
+    this._playingHandler = null;
+  }
+
   private _resetInjectedState(): void {
     this._sessionGeneration++;
+    this._teardownPlaybackTelemetry();
+    this._video = null;
     try {
       chrome.runtime.sendMessage({ type: 'livestream-left' });
     } catch {}

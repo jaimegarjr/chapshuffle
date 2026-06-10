@@ -12,8 +12,14 @@ describe('manifest.json', () => {
     expect(manifest.permissions).toEqual(['storage']);
   });
 
-  test('does not declare redundant host permissions', () => {
-    expect(manifest.host_permissions).toBeUndefined();
+  test('host permissions are narrowly scoped to GA4 collection endpoints', () => {
+    expect(manifest.host_permissions).toContain('https://www.google-analytics.com/mp/collect');
+    expect(manifest.host_permissions).toContain(
+      'https://www.google-analytics.com/debug/mp/collect'
+    );
+    // No wildcards — keep the surface minimal
+    const wildcards = (manifest.host_permissions as string[]).filter((p) => p.includes('*'));
+    expect(wildcards).toHaveLength(0);
   });
 
   test('content script matches youtube.com pages', () => {

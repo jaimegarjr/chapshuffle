@@ -2,6 +2,7 @@ import { settings } from './persistence/PersistenceManager';
 import type { OutgoingPayload } from './analytics/AnalyticsReporter';
 import {
   ANALYTICS_SESSION_GET_OR_CREATE,
+  ANALYTICS_SESSION_RESET,
   ANALYTICS_SESSION_TOUCH,
   AnalyticsSessionService,
 } from './analytics/AnalyticsSession';
@@ -59,6 +60,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     sendResponse(analyticsSession.getOrCreate());
   } else if (msg?.type === ANALYTICS_SESSION_TOUCH) {
     analyticsSession.touch();
+    sendResponse({});
+  } else if (msg?.type === ANALYTICS_SESSION_RESET) {
+    analyticsSession.reset();
     sendResponse({});
   } else if (msg?.type === 'ga4-deliver') {
     const credentials = readCredentials();

@@ -1,10 +1,12 @@
 import {
   ANALYTICS_SESSION_GET_OR_CREATE,
+  ANALYTICS_SESSION_RESET,
   ANALYTICS_SESSION_TOUCH,
   AnalyticsSessionManager,
   AnalyticsSessionService,
   RuntimeAnalyticsSession,
   SESSION_TIMEOUT_MS,
+  resetRuntimeAnalyticsSession,
 } from '../../src/analytics/AnalyticsSession';
 
 describe('AnalyticsSessionManager — getOrCreate()', () => {
@@ -186,6 +188,17 @@ describe('AnalyticsSessionService — shared tab coordination', () => {
     expect(afterRestart.sessionId).not.toBe(beforeRestart.sessionId);
     expect(afterRestart.isNew).toBe(true);
   });
+
+  test('consent revocation resets the shared session', () => {
+    const service = new AnalyticsSessionService();
+    const beforeReset = service.getOrCreate();
+
+    service.reset();
+    const afterReset = service.getOrCreate();
+
+    expect(afterReset.sessionId).not.toBe(beforeReset.sessionId);
+    expect(afterReset.isNew).toBe(true);
+  });
 });
 
 describe('RuntimeAnalyticsSession', () => {
@@ -197,6 +210,7 @@ describe('RuntimeAnalyticsSession', () => {
     const sendMessage = jest
       .fn()
       .mockResolvedValueOnce({ sessionId: 'shared-session', isNew: false })
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({});
     (global as unknown as { chrome: unknown }).chrome = {
       runtime: { sendMessage },
@@ -208,11 +222,15 @@ describe('RuntimeAnalyticsSession', () => {
       isNew: false,
     });
     await expect(session.touch()).resolves.toBeUndefined();
+    await expect(resetRuntimeAnalyticsSession()).resolves.toBeUndefined();
     expect(sendMessage).toHaveBeenNthCalledWith(1, {
       type: ANALYTICS_SESSION_GET_OR_CREATE,
     });
     expect(sendMessage).toHaveBeenNthCalledWith(2, {
       type: ANALYTICS_SESSION_TOUCH,
+    });
+    expect(sendMessage).toHaveBeenNthCalledWith(3, {
+      type: ANALYTICS_SESSION_RESET,
     });
   });
 

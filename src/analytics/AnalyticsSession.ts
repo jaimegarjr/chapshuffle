@@ -12,6 +12,16 @@ export interface AnalyticsSession {
 
 export const ANALYTICS_SESSION_GET_OR_CREATE = 'analytics-session-get-or-create';
 export const ANALYTICS_SESSION_TOUCH = 'analytics-session-touch';
+export const ANALYTICS_SESSION_RESET = 'analytics-session-reset';
+
+export async function resetRuntimeAnalyticsSession(): Promise<void> {
+  const response = await chrome.runtime.sendMessage({
+    type: ANALYTICS_SESSION_RESET,
+  });
+  if (response?.error) {
+    throw new Error(response.error);
+  }
+}
 
 export class RuntimeAnalyticsSession implements AnalyticsSession {
   async getOrCreate(): Promise<SessionResult> {
@@ -92,5 +102,9 @@ export class AnalyticsSessionService {
 
   touch(now = Date.now()): void {
     this._manager.touch(now);
+  }
+
+  reset(): void {
+    this._manager.reset();
   }
 }

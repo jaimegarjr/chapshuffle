@@ -1,10 +1,19 @@
 // Strict allowlist: only declared event names and parameter keys may appear in outgoing payloads.
 // Content-derived values (video IDs, URLs, titles, chapter names, timestamps) are never allowed.
 
-export type AllowedEventName = 'shuffle_session_started';
+export type AllowedEventName =
+  | 'shuffle_session_started'
+  | 'shuffled_video_started'
+  | 'active_playback_heartbeat';
 
 const ALLOWED_PARAMS: Record<AllowedEventName, ReadonlySet<string>> = {
   shuffle_session_started: new Set(['session_id', 'engagement_time_msec', 'extension_version']),
+  shuffled_video_started: new Set(['session_id', 'extension_version']),
+  active_playback_heartbeat: new Set([
+    'session_id',
+    'active_playback_seconds',
+    'extension_version',
+  ]),
 };
 
 export const ALLOWED_EVENT_NAMES: ReadonlySet<string> = new Set(

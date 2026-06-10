@@ -38,7 +38,10 @@ function buildChromeMock(
   });
 
   return {
-    runtime: { lastError: null as { message: string } | null },
+    runtime: {
+      lastError: null as { message: string } | null,
+      sendMessage: jest.fn().mockResolvedValue({}),
+    },
     storage: {
       sync: storageArea(syncStore, 'sync'),
       local: storageArea(localStore, 'local'),

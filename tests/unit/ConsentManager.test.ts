@@ -42,7 +42,10 @@ function buildChromeMock(
   });
 
   return {
-    runtime: { lastError: null as { message: string } | null },
+    runtime: {
+      lastError: null as { message: string } | null,
+      sendMessage: jest.fn().mockResolvedValue({}),
+    },
     storage: {
       sync: storageArea(syncStore, 'sync'),
       local: storageArea(localStore, 'local'),
@@ -112,6 +115,14 @@ describe('setConsent()', () => {
     );
     await setConsent(false);
     expect(getChrome().storage.local._store[INSTALL_ID_KEY]).toBeUndefined();
+  });
+
+  test('resets the in-memory analytics session when consent is revoked', async () => {
+    await setConsent(false);
+
+    expect(getChrome().runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'analytics-session-reset',
+    });
   });
 
   test('does not touch local storage when enabling consent', async () => {

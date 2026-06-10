@@ -61,6 +61,38 @@ describe('validateEventPayload()', () => {
     expect(ALLOWED_EVENT_NAMES.has('shuffle_session_started')).toBe(true);
     expect(ALLOWED_EVENT_NAMES.has('shuffled_video_started')).toBe(true);
     expect(ALLOWED_EVENT_NAMES.has('active_playback_heartbeat')).toBe(true);
+    for (const eventName of [
+      'chapter_completed',
+      'chapter_skipped',
+      'reshuffle_used',
+      'exclusions_updated',
+      'loop_toggled',
+      'queue_reordered',
+      'session_ended',
+    ]) {
+      expect(ALLOWED_EVENT_NAMES.has(eventName)).toBe(true);
+    }
+  });
+
+  test('chapter events strip names, timestamps, and other content-derived values', () => {
+    expect(
+      validateEventPayload('chapter_skipped', {
+        session_id: 'session',
+        queue_position: 2,
+        target_position: 3,
+        queue_length: 8,
+        chapter_name: 'Private title',
+        start_seconds: 123,
+      })
+    ).toEqual({
+      name: 'chapter_skipped',
+      params: {
+        session_id: 'session',
+        queue_position: 2,
+        target_position: 3,
+        queue_length: 8,
+      },
+    });
   });
 
   test('strips content-derived values from playback volume events', () => {

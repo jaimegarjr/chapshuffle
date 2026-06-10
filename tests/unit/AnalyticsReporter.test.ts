@@ -75,6 +75,9 @@ function sessionClient(manager: AnalyticsSessionManager): AnalyticsSession {
     async touch() {
       manager.touch();
     },
+    async markInactive(reason) {
+      manager.markInactive(reason);
+    },
   };
 }
 
@@ -250,6 +253,72 @@ describe('AnalyticsReporter — outgoing payload shape', () => {
             params: {
               session_id: expect.any(String),
               active_playback_seconds: 300,
+              extension_version: '9.9.9-test',
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  test('emits the expired session end before the next product event', async () => {
+    const chrome = consentedChrome('client-product');
+    setChrome(chrome);
+    const session: AnalyticsSession = {
+      getOrCreate: jest.fn().mockResolvedValue({
+        sessionId: 'new-session',
+        isNew: true,
+        endedSession: {
+          sessionId: 'old-session',
+          reason: 'tab_closed',
+        },
+      }),
+      touch: jest.fn().mockResolvedValue(undefined),
+      markInactive: jest.fn().mockResolvedValue(undefined),
+    };
+    const reporter = new AnalyticsReporter(session);
+
+    await reporter.notifyProductEvent(
+      'chapter_completed',
+      { queue_position: 2, queue_length: 7, chapter_name: 'private' },
+      'old-session'
+    );
+    await reporter.flush();
+
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'ga4-deliver',
+      payload: {
+        client_id: 'client-product',
+        events: [
+          {
+            name: 'session_ended',
+            params: {
+              session_id: 'old-session',
+              end_reason: 'tab_closed',
+              extension_version: '9.9.9-test',
+            },
+          },
+          {
+            name: 'shuffle_session_started',
+            params: {
+              session_id: 'new-session',
+              engagement_time_msec: 1,
+              extension_version: '9.9.9-test',
+            },
+          },
+          {
+            name: 'shuffled_video_started',
+            params: {
+              session_id: 'new-session',
+              extension_version: '9.9.9-test',
+            },
+          },
+          {
+            name: 'chapter_completed',
+            params: {
+              session_id: 'new-session',
+              queue_position: 2,
+              queue_length: 7,
               extension_version: '9.9.9-test',
             },
           },

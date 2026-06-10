@@ -4,7 +4,14 @@
 export type AllowedEventName =
   | 'shuffle_session_started'
   | 'shuffled_video_started'
-  | 'active_playback_heartbeat';
+  | 'active_playback_heartbeat'
+  | 'chapter_completed'
+  | 'chapter_skipped'
+  | 'reshuffle_used'
+  | 'exclusions_updated'
+  | 'loop_toggled'
+  | 'queue_reordered'
+  | 'session_ended';
 
 const ALLOWED_PARAMS: Record<AllowedEventName, ReadonlySet<string>> = {
   shuffle_session_started: new Set(['session_id', 'engagement_time_msec', 'extension_version']),
@@ -14,6 +21,25 @@ const ALLOWED_PARAMS: Record<AllowedEventName, ReadonlySet<string>> = {
     'active_playback_seconds',
     'extension_version',
   ]),
+  chapter_completed: new Set(['session_id', 'queue_position', 'queue_length', 'extension_version']),
+  chapter_skipped: new Set([
+    'session_id',
+    'queue_position',
+    'target_position',
+    'queue_length',
+    'extension_version',
+  ]),
+  reshuffle_used: new Set(['session_id', 'extension_version']),
+  exclusions_updated: new Set(['session_id', 'excluded_count', 'extension_version']),
+  loop_toggled: new Set(['session_id', 'enabled', 'extension_version']),
+  queue_reordered: new Set([
+    'session_id',
+    'from_position',
+    'to_position',
+    'queue_length',
+    'extension_version',
+  ]),
+  session_ended: new Set(['session_id', 'end_reason', 'extension_version']),
 };
 
 export const ALLOWED_EVENT_NAMES: ReadonlySet<string> = new Set(

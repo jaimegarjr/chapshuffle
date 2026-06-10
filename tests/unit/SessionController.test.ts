@@ -180,6 +180,44 @@ describe('SessionController — actions', () => {
     jest.mocked(Math.random).mockRestore();
     session.destroy();
   });
+
+  test('reports skips and feature use with queue positions, never chapter content', async () => {
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    const onAnalyticsEvent = jest.fn();
+    const session = await createSession({ onAnalyticsEvent });
+    const queueLength = session.snapshot.queue.length;
+
+    session.perform({ type: 'next' });
+    session.perform({ type: 'toggle-loop' });
+    session.perform({ type: 'reshuffle' });
+    session.perform({ type: 'reorder', fromIndex: 0, toIndex: 1 });
+    session.perform({ type: 'apply-exclusions', excludedSeconds: new Set([120]) });
+
+    expect(onAnalyticsEvent).toHaveBeenCalledWith({
+      name: 'chapter_skipped',
+      params: { queue_position: 1, target_position: 2, queue_length: queueLength },
+    });
+    expect(onAnalyticsEvent).toHaveBeenCalledWith({
+      name: 'loop_toggled',
+      params: { enabled: true },
+    });
+    expect(onAnalyticsEvent).toHaveBeenCalledWith({
+      name: 'reshuffle_used',
+      params: {},
+    });
+    expect(onAnalyticsEvent).toHaveBeenCalledWith({
+      name: 'queue_reordered',
+      params: { from_position: 1, to_position: 2, queue_length: queueLength },
+    });
+    expect(onAnalyticsEvent).toHaveBeenCalledWith({
+      name: 'exclusions_updated',
+      params: { excluded_count: 1 },
+    });
+    expect(JSON.stringify(onAnalyticsEvent.mock.calls)).not.toContain('Chapter');
+
+    jest.mocked(Math.random).mockRestore();
+    session.destroy();
+  });
 });
 
 describe('SessionController — exclusion actions', () => {

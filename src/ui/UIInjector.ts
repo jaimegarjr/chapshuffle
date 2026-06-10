@@ -12,6 +12,7 @@ import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
 import { analyticsReporter } from '../analytics/AnalyticsReporter';
+import { PlaybackActivityMonitor } from '../analytics/PlaybackActivityMonitor';
 
 const VIDEO_SEL = 'video';
 
@@ -28,6 +29,7 @@ export class UIInjector {
   private _unsubscribeSettings: (() => void) | null = null;
   private _video: HTMLVideoElement | null = null;
   private _playingHandler: (() => void) | null = null;
+  private _activityMonitor: PlaybackActivityMonitor | null = null;
 
   constructor(doc: Document = document) {
     this._doc = doc;
@@ -142,20 +144,28 @@ export class UIInjector {
     // Remove any existing listener before attaching a new one.
     this._teardownPlaybackTelemetry();
 
-    if (!video.paused && !video.ended) {
-      // Video is already playing — notify immediately.
-      analyticsReporter.notifyEligiblePlayback().catch(() => {});
-      return;
-    }
+    // Qualifying playback must keep refreshing the session's inactivity
+    // window, otherwise continuous playback past the timeout would wrongly
+    // expire it and emit a duplicate session-start.
+    this._activityMonitor = new PlaybackActivityMonitor(video, () =>
+      analyticsReporter.touchSession()
+    );
+    this._activityMonitor.start();
 
-    // Wait for the video to actually start playing.
     this._playingHandler = (): void => {
       analyticsReporter.notifyEligiblePlayback().catch(() => {});
     };
     video.addEventListener('playing', this._playingHandler);
+
+    if (!video.paused && !video.ended) {
+      // Video is already playing — notify immediately.
+      analyticsReporter.notifyEligiblePlayback().catch(() => {});
+    }
   }
 
   private _teardownPlaybackTelemetry(): void {
+    this._activityMonitor?.stop();
+    this._activityMonitor = null;
     if (this._playingHandler && this._video) {
       this._video.removeEventListener('playing', this._playingHandler);
     }

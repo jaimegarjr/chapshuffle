@@ -66,6 +66,35 @@ describe('AnalyticsSessionManager — touch()', () => {
     mgr.touch(Date.now()); // should not throw or create a session
     expect(mgr.sessionId).toBeNull();
   });
+
+  test('does not revive an already-expired session', () => {
+    const mgr = new AnalyticsSessionManager();
+    const t = Date.now();
+    const first = mgr.getOrCreate(t);
+
+    // Activity tick arrives after the session already expired
+    mgr.touch(t + SESSION_TIMEOUT_MS + 1);
+
+    const second = mgr.getOrCreate(t + SESSION_TIMEOUT_MS + 2);
+    expect(second.isNew).toBe(true);
+    expect(second.sessionId).not.toBe(first.sessionId);
+  });
+
+  test('continuous touches keep one session alive far beyond the timeout', () => {
+    const mgr = new AnalyticsSessionManager();
+    const t = Date.now();
+    const first = mgr.getOrCreate(t);
+
+    // Simulate >60 minutes of qualifying playback refreshed in half-timeout steps
+    const step = SESSION_TIMEOUT_MS / 2;
+    for (let i = 1; i <= 5; i++) {
+      mgr.touch(t + step * i);
+    }
+
+    const second = mgr.getOrCreate(t + step * 5 + 1);
+    expect(second.isNew).toBe(false);
+    expect(second.sessionId).toBe(first.sessionId);
+  });
 });
 
 describe('AnalyticsSessionManager — reset()', () => {

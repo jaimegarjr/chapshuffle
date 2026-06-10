@@ -3,9 +3,10 @@ import { expect, resetExtensionStorage, test } from './fixtures';
 test('popup settings persist across extension page reloads', async ({ page, extensionId }) => {
   await resetExtensionStorage(page, extensionId);
 
-  const shuffleToggle = page.getByRole('checkbox');
+  const shuffleRow = page.locator('.row', { hasText: 'Enable shuffle' });
+  const shuffleToggle = shuffleRow.getByRole('checkbox');
   await expect(shuffleToggle).not.toBeChecked();
-  await page.locator('.switch').click();
+  await shuffleRow.locator('.switch').click();
   await expect(shuffleToggle).toBeChecked();
 
   await expect(page.locator('.step-value')).toHaveText('5');

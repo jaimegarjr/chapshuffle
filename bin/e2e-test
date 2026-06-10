@@ -15,7 +15,11 @@ case "$MODE" in
 esac
 
 cd "$REPO_ROOT"
-yarn build:prod
+# Dummy GA credentials so the service worker attempts delivery; consent specs
+# capture the fetch inside the worker, so nothing reaches real GA4.
+GA_MEASUREMENT_ID="${GA_MEASUREMENT_ID:-G-E2ETEST}" \
+  GA_API_SECRET="${GA_API_SECRET:-e2e-test-secret}" \
+  yarn build:prod
 
 TEST_ARGS=()
 if [[ -n "$TARGET" ]]; then

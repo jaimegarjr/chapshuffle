@@ -28,9 +28,9 @@ export class AnalyticsSessionManager {
   }
 
   touch(now = Date.now()): void {
-    if (this._sessionId !== null) {
-      this._lastActivity = now;
-    }
+    if (this._sessionId === null || this._lastActivity === null) return;
+    if (now - this._lastActivity > this._timeoutMs) return;
+    this._lastActivity = now;
   }
 
   reset(): void {

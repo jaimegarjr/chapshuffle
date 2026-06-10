@@ -1,5 +1,6 @@
 import { UIInjector } from '../../src/ui/UIInjector';
 import { analyticsReporter } from '../../src/analytics/AnalyticsReporter';
+import { ACTIVITY_REFRESH_INTERVAL_MS } from '../../src/analytics/PlaybackActivityMonitor';
 
 jest.mock('../../src/analytics/AnalyticsReporter', () => ({
   analyticsReporter: {
@@ -116,10 +117,14 @@ function dragItem(fromIndex: number, toIndex: number): void {
   items()[toIndex].dispatchEvent(drop);
 }
 
+// runOnlyPendingTimers, not runAllTimers — the activity monitor's live
+// setInterval would make runAllTimers loop forever.
 async function flushAll(): Promise<void> {
-  jest.runAllTimers();
-  await Promise.resolve();
-  await Promise.resolve();
+  for (let i = 0; i < 10; i++) {
+    jest.runOnlyPendingTimers();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
 }
 
 describe('UIInjector — injection guard', () => {
@@ -617,6 +622,89 @@ describe('UIInjector — playback telemetry eligibility', () => {
     video.dispatchEvent(new Event('playing'));
 
     expect(notifySpy).not.toHaveBeenCalled();
+    injector.destroy();
+  });
+});
+
+describe('UIInjector — session activity refresh', () => {
+  const touchSpy = analyticsReporter.touchSession as jest.Mock;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    touchSpy.mockClear();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  async function injectWith(shuffleEnabled: boolean) {
+    const chromeMock = buildChromeMock({ shuffleEnabled });
+    (global as unknown as Record<string, unknown>).chrome = chromeMock;
+    addPlayerControls(document);
+    addChapterItems(document, 5);
+    const video = addVideoElement(document);
+    const injector = new UIInjector(document);
+    await injector.init();
+    await flushAll();
+    touchSpy.mockClear();
+    return { injector, video, chromeMock };
+  }
+
+  test('qualifying playback touches the session every interval', async () => {
+    const { injector, video } = await injectWith(true);
+
+    video.dispatchEvent(new Event('playing'));
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 2);
+
+    expect(touchSpy).toHaveBeenCalledTimes(2);
+    injector.destroy();
+  });
+
+  test('paused time does not touch the session', async () => {
+    const { injector, video } = await injectWith(true);
+
+    video.dispatchEvent(new Event('playing'));
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS);
+    video.dispatchEvent(new Event('pause'));
+    touchSpy.mockClear();
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 3);
+
+    expect(touchSpy).not.toHaveBeenCalled();
+    injector.destroy();
+  });
+
+  test('Auto-advance off playback does not touch the session', async () => {
+    const { injector, video } = await injectWith(false);
+
+    video.dispatchEvent(new Event('playing'));
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 2);
+
+    expect(touchSpy).not.toHaveBeenCalled();
+    injector.destroy();
+  });
+
+  test('turning Auto-advance off stops session touches', async () => {
+    const { injector, video, chromeMock } = await injectWith(true);
+
+    video.dispatchEvent(new Event('playing'));
+    chromeMock.storage.onChanged.emit({
+      shuffleEnabled: { oldValue: true, newValue: false },
+    });
+    await flushAll();
+    touchSpy.mockClear();
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 2);
+
+    expect(touchSpy).not.toHaveBeenCalled();
+    injector.destroy();
+  });
+
+  test('navigation stops session touches for the old video', async () => {
+    const { injector, video } = await injectWith(true);
+
+    video.dispatchEvent(new Event('playing'));
+    document.dispatchEvent(new Event('yt-navigate-finish'));
+    touchSpy.mockClear();
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 2);
+
+    expect(touchSpy).not.toHaveBeenCalled();
     injector.destroy();
   });
 });

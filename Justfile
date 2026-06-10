@@ -30,6 +30,10 @@ build:
 dev:
     yarn watch
 
+# Serve the public homepage over HTTP (CSS mask icons don't load via file://)
+serve-docs port="8000":
+    npx serve docs -l {{port}}
+
 # Format source files with Prettier
 format:
     yarn format

@@ -46,7 +46,8 @@
     "moduleNameMapper": {
       "^preact/jsx-runtime$": "<rootDir>/node_modules/preact/jsx-runtime/dist/jsxRuntime.js",
       "^preact/hooks$": "<rootDir>/node_modules/preact/hooks/dist/hooks.js",
-      "^preact$": "<rootDir>/node_modules/preact/dist/preact.js"
+      "^preact$": "<rootDir>/node_modules/preact/dist/preact.js",
+      "^preact/test-utils$": "<rootDir>/node_modules/preact/test-utils/dist/testUtils.js"
     }
   },
   "dependencies": {

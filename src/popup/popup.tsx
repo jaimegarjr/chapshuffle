@@ -5,13 +5,15 @@ import {
   settings,
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
+import { getConsent, setConsent, subscribeConsent } from '../analytics/ConsentManager';
 
-function App() {
+export function App() {
   const [enabled, setEnabled] = useState(DEFAULT_SETTINGS.shuffleEnabled);
   const [minChapters, setMinChaptersState] = useState(DEFAULT_SETTINGS.minChapters);
   const [queueEnd, setQueueEndState] = useState<QueueEndBehavior>(
     DEFAULT_SETTINGS.queueEndBehavior
   );
+  const [consent, setConsentState] = useState(false);
 
   useEffect(() => {
     settings.read().then((initialSettings) => {
@@ -19,6 +21,8 @@ function App() {
       setMinChaptersState(initialSettings.minChapters);
       setQueueEndState(initialSettings.queueEndBehavior);
     });
+    getConsent().then(setConsentState);
+    return subscribeConsent(setConsentState);
   }, []);
 
   const handleToggle = (e: Event) => {
@@ -36,6 +40,12 @@ function App() {
   const handleQueueEnd = (value: QueueEndBehavior) => {
     setQueueEndState(value);
     settings.update({ queueEndBehavior: value });
+  };
+
+  const handleConsentToggle = (e: Event) => {
+    const checked = (e.target as HTMLInputElement).checked;
+    setConsentState(checked);
+    setConsent(checked);
   };
 
   return (
@@ -109,6 +119,19 @@ function App() {
             </button>
           </div>
         </div>
+
+        <div class="row">
+          <div class="label-group">
+            <span class="label">Share anonymous usage metrics</span>
+            <span class="sublabel">
+              No video titles or personal data — helps improve ChapShuffle
+            </span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" checked={consent} onChange={handleConsentToggle} />
+            <span class="slider" />
+          </label>
+        </div>
       </div>
 
       <p class="hint">
@@ -119,4 +142,5 @@ function App() {
   );
 }
 
-render(<App />, document.getElementById('app')!);
+const root = document.getElementById('app');
+if (root) render(<App />, root);

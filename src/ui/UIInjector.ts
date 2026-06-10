@@ -58,8 +58,6 @@ export class UIInjector {
       this._autoAdvance = shuffleEnabled;
       if (this._session) this._session.autoAdvance = this._autoAdvance;
       this._shell.updateShuffleState(this._autoAdvance);
-      // Telemetry eligibility follows Auto-advance: attach when turned on
-      // (firing immediately if the video is already playing), detach when turned off.
       if (this._autoAdvance && this._video) {
         this._setupPlaybackTelemetry(this._video);
       } else if (!this._autoAdvance) {

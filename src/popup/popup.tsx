@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import {
   DEFAULT_SETTINGS,
   settings,
@@ -7,6 +7,11 @@ import {
 } from '../persistence/PersistenceManager';
 import { getConsent, setConsent, subscribeConsent } from '../analytics/ConsentManager';
 import { analyticsReporter } from '../analytics/AnalyticsReporter';
+import {
+  getAnalyticsNoticeDismissed,
+  setAnalyticsNoticeDismissed,
+  subscribeAnalyticsNotice,
+} from '../analytics/AnalyticsNotice';
 
 export const POPUP_LINKS = {
   feedback: 'https://forms.gle/1Sa7R5roqwko2suSA',
@@ -22,6 +27,8 @@ export function App() {
     DEFAULT_SETTINGS.queueEndBehavior
   );
   const [consent, setConsentState] = useState(false);
+  const [analyticsNoticeVisible, setAnalyticsNoticeVisible] = useState(false);
+  const consentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     settings.read().then((initialSettings) => {
@@ -30,7 +37,16 @@ export function App() {
       setQueueEndState(initialSettings.queueEndBehavior);
     });
     getConsent().then(setConsentState);
-    return subscribeConsent(setConsentState);
+    getAnalyticsNoticeDismissed().then((dismissed) => setAnalyticsNoticeVisible(!dismissed));
+
+    const unsubscribeConsent = subscribeConsent(setConsentState);
+    const unsubscribeNotice = subscribeAnalyticsNotice((dismissed) => {
+      setAnalyticsNoticeVisible(!dismissed);
+    });
+    return () => {
+      unsubscribeConsent();
+      unsubscribeNotice();
+    };
   }, []);
 
   const handleToggle = (e: Event) => {
@@ -54,6 +70,14 @@ export function App() {
     const checked = (e.target as HTMLInputElement).checked;
     setConsentState(checked);
     setConsent(checked);
+  };
+
+  const dismissAnalyticsNotice = async (reviewSetting: boolean): Promise<void> => {
+    await setAnalyticsNoticeDismissed();
+    setAnalyticsNoticeVisible(false);
+    if (reviewSetting) {
+      consentInputRef.current?.focus();
+    }
   };
 
   const openLink = async (url: string, trackFeedback = false): Promise<void> => {
@@ -85,6 +109,25 @@ export function App() {
         </svg>
         <span class="title">ChapShuffle</span>
       </header>
+
+      {analyticsNoticeVisible && (
+        <aside class="analytics-notice" aria-labelledby="analytics-notice-title">
+          <strong id="analytics-notice-title">Optional usage analytics</strong>
+          <p>
+            ChapShuffle can share anonymous feature usage to help guide improvements. It stays off
+            unless you choose to enable it.
+          </p>
+          <div class="analytics-notice-actions">
+            <button onClick={() => void dismissAnalyticsNotice(false)}>Not now</button>
+            <button
+              class="analytics-notice-review"
+              onClick={() => void dismissAnalyticsNotice(true)}
+            >
+              Review setting
+            </button>
+          </div>
+        </aside>
+      )}
 
       <div class="settings">
         <section class="section" aria-labelledby="playback-heading">
@@ -171,6 +214,7 @@ export function App() {
             </div>
             <label class="switch">
               <input
+                ref={consentInputRef}
                 aria-label="Share anonymous usage metrics"
                 type="checkbox"
                 checked={consent}

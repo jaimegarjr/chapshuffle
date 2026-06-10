@@ -3,6 +3,7 @@ import { act } from 'preact/test-utils';
 import { App } from '../../src/popup/popup';
 import { POPUP_LINKS } from '../../src/popup/popup';
 import { ANALYTICS_CONSENT_KEY, INSTALL_ID_KEY } from '../../src/analytics/ConsentManager';
+import { ANALYTICS_NOTICE_DISMISSED_KEY } from '../../src/analytics/AnalyticsNotice';
 
 function buildChromeMock(
   initialSync: Record<string, unknown> = {},
@@ -109,6 +110,14 @@ async function toggleConsent(checked: boolean): Promise<void> {
     input.checked = checked;
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
+}
+
+function noticeButton(label: string): HTMLButtonElement {
+  const button = Array.from(container.querySelectorAll('.analytics-notice button')).find(
+    (candidate) => candidate.textContent === label
+  );
+  if (!button) throw new Error(`${label} button not found`);
+  return button as HTMLButtonElement;
 }
 
 async function emitExternalConsentChange(newValue: boolean): Promise<void> {
@@ -243,5 +252,50 @@ describe('popup sections and help links', () => {
         ],
       },
     });
+  });
+});
+
+describe('existing-user analytics notice', () => {
+  test('appears on first open without changing default-off consent', async () => {
+    await mountApp();
+
+    expect(container.querySelector('.analytics-notice')).not.toBeNull();
+    expect(consentInput().checked).toBe(false);
+    expect(getChrome().storage.sync._store[ANALYTICS_CONSENT_KEY]).toBeUndefined();
+  });
+
+  test('Not now permanently dismisses the notice in sync storage', async () => {
+    await mountApp();
+
+    await act(async () => {
+      noticeButton('Not now').click();
+      await flushMicrotasks();
+    });
+
+    expect(container.querySelector('.analytics-notice')).toBeNull();
+    expect(getChrome().storage.sync._store[ANALYTICS_NOTICE_DISMISSED_KEY]).toBe(true);
+    expect(consentInput().checked).toBe(false);
+  });
+
+  test('Review setting dismisses the notice and focuses the disabled-by-default toggle', async () => {
+    await mountApp();
+
+    await act(async () => {
+      noticeButton('Review setting').click();
+      await flushMicrotasks();
+    });
+
+    expect(container.querySelector('.analytics-notice')).toBeNull();
+    expect(document.activeElement).toBe(consentInput());
+    expect(consentInput().checked).toBe(false);
+    expect(getChrome().storage.sync._store[ANALYTICS_NOTICE_DISMISSED_KEY]).toBe(true);
+  });
+
+  test('stays hidden for new installations that onboarding marked complete', async () => {
+    setChrome(buildChromeMock({ [ANALYTICS_NOTICE_DISMISSED_KEY]: true }));
+    await mountApp();
+
+    expect(container.querySelector('.analytics-notice')).toBeNull();
+    expect(consentInput().checked).toBe(false);
   });
 });

@@ -54,6 +54,57 @@
         padding: 0;
       }
 
+      .analytics-notice {
+        margin: 12px 12px 0;
+        padding: 12px;
+        border: 1px solid rgba(204, 0, 0, 0.42);
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(204, 0, 0, 0.16), rgba(255, 255, 255, 0.04));
+      }
+
+      .analytics-notice strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+
+      .analytics-notice p {
+        color: rgba(255, 255, 255, 0.58);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .analytics-notice-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .analytics-notice-actions button {
+        padding: 5px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.72);
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      .analytics-notice-actions button:hover,
+      .analytics-notice-actions button:focus-visible {
+        border-color: rgba(255, 255, 255, 0.28);
+        color: #fff;
+        outline: none;
+      }
+
+      .analytics-notice-actions .analytics-notice-review {
+        border-color: rgba(204, 0, 0, 0.65);
+        background: rgba(204, 0, 0, 0.3);
+        color: #fff;
+      }
+
       .section + .section {
         border-top: 1px solid rgba(255, 255, 255, 0.1);
       }
@@ -108,6 +159,11 @@
         width: 0;
         height: 0;
         position: absolute;
+      }
+
+      .switch input:focus-visible + .slider {
+        outline: 2px solid rgba(255, 255, 255, 0.9);
+        outline-offset: 2px;
       }
 
       .slider {

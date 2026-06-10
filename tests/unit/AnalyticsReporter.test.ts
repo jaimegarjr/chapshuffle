@@ -100,13 +100,25 @@ describe('AnalyticsReporter — consent gating', () => {
     await makeReporter().notifyEligiblePlayback();
     expect(typeof chrome.storage.local._store[INSTALL_ID_KEY]).toBe('string');
   });
+
+  test('does not emit active playback heartbeats without consent', async () => {
+    const chrome = buildChromeMock({ [ANALYTICS_CONSENT_KEY]: false });
+    setChrome(chrome);
+    const reporter = makeReporter();
+
+    await expect(reporter.notifyActivePlayback(5 * 60 * 1000, null)).resolves.toBeNull();
+    await reporter.flush();
+
+    expect(chrome.storage.local._store[INSTALL_ID_KEY]).toBeUndefined();
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+  });
 });
 
 describe('AnalyticsReporter — session lifecycle', () => {
   test('emits an event (creates session) on first eligible playback', async () => {
     setChrome(consentedChrome('test-client'));
     const reporter = makeReporter();
-    await expect(reporter.notifyEligiblePlayback()).resolves.toBeUndefined();
+    await expect(reporter.notifyEligiblePlayback()).resolves.toEqual(expect.any(String));
   });
 
   test('does not create a new session within the timeout window', async () => {
@@ -130,7 +142,7 @@ describe('AnalyticsReporter — session lifecycle', () => {
     const { sessionId: second } = session.getOrCreate(t + 200);
     expect(second).not.toBe(first);
 
-    await expect(reporter.notifyEligiblePlayback()).resolves.toBeUndefined();
+    await expect(reporter.notifyEligiblePlayback()).resolves.toEqual(expect.any(String));
   });
 });
 
@@ -149,7 +161,7 @@ describe('AnalyticsReporter — failure isolation', () => {
       },
     };
     const reporter = makeReporter();
-    await expect(reporter.notifyEligiblePlayback()).resolves.toBeUndefined();
+    await expect(reporter.notifyEligiblePlayback()).resolves.toBeNull();
   });
 
   test('does not throw when consent check rejects', async () => {
@@ -165,15 +177,17 @@ describe('AnalyticsReporter — failure isolation', () => {
         onChanged: { addListener: jest.fn(), removeListener: jest.fn() },
       },
     };
-    await expect(makeReporter().notifyEligiblePlayback()).resolves.toBeUndefined();
+    await expect(makeReporter().notifyEligiblePlayback()).resolves.toBeNull();
   });
 });
 
 describe('AnalyticsReporter — outgoing payload shape', () => {
-  test('delivered payload carries session_id, engagement_time_msec, and extension version', async () => {
+  test('first qualifying playback emits session and shuffled-video start events', async () => {
     const chrome = consentedChrome('client-shape');
     setChrome(chrome);
-    await makeReporter().notifyEligiblePlayback();
+    const reporter = makeReporter();
+    await reporter.notifyEligiblePlayback();
+    await reporter.flush();
 
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
       type: 'ga4-deliver',
@@ -188,6 +202,57 @@ describe('AnalyticsReporter — outgoing payload shape', () => {
               extension_version: '9.9.9-test',
             },
           },
+          {
+            name: 'shuffled_video_started',
+            params: {
+              session_id: expect.any(String),
+              extension_version: '9.9.9-test',
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  test('resuming the same video in the same session does not repeat its start event', async () => {
+    const chrome = consentedChrome('client-resume');
+    setChrome(chrome);
+    const reporter = makeReporter();
+    const sessionId = await reporter.notifyEligiblePlayback();
+    await reporter.flush();
+    await reporter.notifyEligiblePlayback(sessionId);
+    await reporter.flush();
+
+    const deliveredEvents = chrome.runtime.sendMessage.mock.calls.flatMap(
+      ([message]) => message.payload?.events ?? []
+    );
+    expect(deliveredEvents.filter((event) => event.name === 'shuffled_video_started')).toHaveLength(
+      1
+    );
+  });
+
+  test('heartbeat carries only coarse active playback duration', async () => {
+    const chrome = consentedChrome('client-heartbeat');
+    setChrome(chrome);
+    const reporter = makeReporter();
+    const sessionId = await reporter.notifyEligiblePlayback();
+    await reporter.flush();
+    await reporter.notifyActivePlayback(5 * 60 * 1000, sessionId);
+    await reporter.flush();
+
+    expect(chrome.runtime.sendMessage).toHaveBeenLastCalledWith({
+      type: 'ga4-deliver',
+      payload: {
+        client_id: 'client-heartbeat',
+        events: [
+          {
+            name: 'active_playback_heartbeat',
+            params: {
+              session_id: expect.any(String),
+              active_playback_seconds: 300,
+              extension_version: '9.9.9-test',
+            },
+          },
         ],
       },
     });
@@ -198,6 +263,6 @@ describe('AnalyticsReporter — credential gating', () => {
   test('completes without error when GA credentials are absent (no network call)', async () => {
     setChrome(consentedChrome('no-creds-client'));
     const reporter = makeReporter();
-    await expect(reporter.notifyEligiblePlayback()).resolves.toBeUndefined();
+    await expect(reporter.notifyEligiblePlayback()).resolves.toEqual(expect.any(String));
   });
 });

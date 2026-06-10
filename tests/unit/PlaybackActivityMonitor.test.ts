@@ -1,4 +1,5 @@
 import {
+  ACTIVE_PLAYBACK_HEARTBEAT_MS,
   ACTIVITY_REFRESH_INTERVAL_MS,
   PlaybackActivityMonitor,
 } from '../../src/analytics/PlaybackActivityMonitor';
@@ -104,5 +105,78 @@ describe('PlaybackActivityMonitor', () => {
     video.emit('playing');
     jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 2);
     expect(onActivity).not.toHaveBeenCalled();
+  });
+
+  test('emits a coarse heartbeat after five accumulated active minutes', () => {
+    const video = buildVideo({ paused: false });
+    const onHeartbeat = jest.fn();
+    new PlaybackActivityMonitor(
+      video,
+      jest.fn(),
+      ACTIVITY_REFRESH_INTERVAL_MS,
+      onHeartbeat
+    ).start();
+
+    jest.advanceTimersByTime(ACTIVE_PLAYBACK_HEARTBEAT_MS);
+
+    expect(onHeartbeat).toHaveBeenCalledWith(ACTIVE_PLAYBACK_HEARTBEAT_MS);
+    expect(onHeartbeat).toHaveBeenCalledTimes(1);
+  });
+
+  test('paused time is excluded while partial active time carries forward', () => {
+    const video = buildVideo({ paused: false });
+    const onHeartbeat = jest.fn();
+    new PlaybackActivityMonitor(
+      video,
+      jest.fn(),
+      ACTIVITY_REFRESH_INTERVAL_MS,
+      onHeartbeat
+    ).start();
+
+    jest.advanceTimersByTime(ACTIVE_PLAYBACK_HEARTBEAT_MS - ACTIVITY_REFRESH_INTERVAL_MS);
+    video.emit('pause');
+    jest.advanceTimersByTime(ACTIVE_PLAYBACK_HEARTBEAT_MS);
+    expect(onHeartbeat).not.toHaveBeenCalled();
+
+    video.emit('playing');
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS);
+    expect(onHeartbeat).toHaveBeenCalledTimes(1);
+  });
+
+  test('buffering time is excluded until playback resumes', () => {
+    const video = buildVideo({ paused: false });
+    const onHeartbeat = jest.fn();
+    new PlaybackActivityMonitor(
+      video,
+      jest.fn(),
+      ACTIVITY_REFRESH_INTERVAL_MS,
+      onHeartbeat
+    ).start();
+
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 2);
+    video.emit('waiting');
+    jest.advanceTimersByTime(ACTIVE_PLAYBACK_HEARTBEAT_MS);
+    expect(onHeartbeat).not.toHaveBeenCalled();
+
+    video.emit('playing');
+    jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 3);
+    expect(onHeartbeat).toHaveBeenCalledTimes(1);
+  });
+
+  test('hidden-tab audio playback still accumulates active time', () => {
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+    const video = buildVideo({ paused: false });
+    const onHeartbeat = jest.fn();
+    new PlaybackActivityMonitor(
+      video,
+      jest.fn(),
+      ACTIVITY_REFRESH_INTERVAL_MS,
+      onHeartbeat
+    ).start();
+
+    jest.advanceTimersByTime(ACTIVE_PLAYBACK_HEARTBEAT_MS);
+
+    expect(onHeartbeat).toHaveBeenCalledTimes(1);
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true });
   });
 });

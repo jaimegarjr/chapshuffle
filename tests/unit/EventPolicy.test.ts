@@ -1,7 +1,4 @@
-import {
-  ALLOWED_EVENT_NAMES,
-  validateEventPayload,
-} from '../../src/analytics/EventPolicy';
+import { ALLOWED_EVENT_NAMES, validateEventPayload } from '../../src/analytics/EventPolicy';
 
 describe('validateEventPayload()', () => {
   test('returns null for an undeclared event name', () => {
@@ -62,6 +59,33 @@ describe('validateEventPayload()', () => {
 
   test('ALLOWED_EVENT_NAMES includes shuffle_session_started', () => {
     expect(ALLOWED_EVENT_NAMES.has('shuffle_session_started')).toBe(true);
+    expect(ALLOWED_EVENT_NAMES.has('shuffled_video_started')).toBe(true);
+    expect(ALLOWED_EVENT_NAMES.has('active_playback_heartbeat')).toBe(true);
+  });
+
+  test('strips content-derived values from playback volume events', () => {
+    expect(
+      validateEventPayload('shuffled_video_started', {
+        session_id: 'session',
+        extension_version: '1.2.3',
+        video_id: 'private-video',
+        url: 'https://youtube.com/watch?v=private-video',
+      })
+    ).toEqual({
+      name: 'shuffled_video_started',
+      params: { session_id: 'session', extension_version: '1.2.3' },
+    });
+    expect(
+      validateEventPayload('active_playback_heartbeat', {
+        session_id: 'session',
+        active_playback_seconds: 300,
+        exact_timestamp: 123456789,
+        chapter_name: 'Private chapter',
+      })
+    ).toEqual({
+      name: 'active_playback_heartbeat',
+      params: { session_id: 'session', active_playback_seconds: 300 },
+    });
   });
 
   test('ALLOWED_EVENT_NAMES does not include undeclared event names', () => {

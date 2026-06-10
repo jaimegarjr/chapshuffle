@@ -1,10 +1,14 @@
 import { UIInjector } from '../../src/ui/UIInjector';
 import { analyticsReporter } from '../../src/analytics/AnalyticsReporter';
-import { ACTIVITY_REFRESH_INTERVAL_MS } from '../../src/analytics/PlaybackActivityMonitor';
+import {
+  ACTIVE_PLAYBACK_HEARTBEAT_MS,
+  ACTIVITY_REFRESH_INTERVAL_MS,
+} from '../../src/analytics/PlaybackActivityMonitor';
 
 jest.mock('../../src/analytics/AnalyticsReporter', () => ({
   analyticsReporter: {
     notifyEligiblePlayback: jest.fn().mockResolvedValue(undefined),
+    notifyActivePlayback: jest.fn().mockResolvedValue(undefined),
     touchSession: jest.fn(),
   },
 }));
@@ -123,6 +127,12 @@ async function flushAll(): Promise<void> {
   for (let i = 0; i < 10; i++) {
     jest.runOnlyPendingTimers();
     await Promise.resolve();
+    await Promise.resolve();
+  }
+}
+
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
     await Promise.resolve();
   }
 }
@@ -575,6 +585,7 @@ describe('UIInjector — playback telemetry eligibility', () => {
     const { injector, video } = await injectWith(true);
 
     video.dispatchEvent(new Event('playing'));
+    await flushMicrotasks();
 
     expect(notifySpy).toHaveBeenCalledTimes(1);
     injector.destroy();
@@ -628,10 +639,12 @@ describe('UIInjector — playback telemetry eligibility', () => {
 
 describe('UIInjector — session activity refresh', () => {
   const touchSpy = analyticsReporter.touchSession as jest.Mock;
+  const heartbeatSpy = analyticsReporter.notifyActivePlayback as jest.Mock;
 
   beforeEach(() => {
     jest.useFakeTimers();
     touchSpy.mockClear();
+    heartbeatSpy.mockClear();
   });
   afterEach(() => jest.useRealTimers());
 
@@ -668,6 +681,17 @@ describe('UIInjector — session activity refresh', () => {
     jest.advanceTimersByTime(ACTIVITY_REFRESH_INTERVAL_MS * 3);
 
     expect(touchSpy).not.toHaveBeenCalled();
+    injector.destroy();
+  });
+
+  test('qualifying playback reports a heartbeat after five active minutes', async () => {
+    const { injector, video } = await injectWith(true);
+
+    video.dispatchEvent(new Event('playing'));
+    jest.advanceTimersByTime(ACTIVE_PLAYBACK_HEARTBEAT_MS);
+    await flushMicrotasks();
+
+    expect(heartbeatSpy).toHaveBeenCalledWith(ACTIVE_PLAYBACK_HEARTBEAT_MS, null);
     injector.destroy();
   });
 

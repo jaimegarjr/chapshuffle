@@ -30,6 +30,8 @@ export class UIInjector {
   private _video: HTMLVideoElement | null = null;
   private _playingHandler: (() => void) | null = null;
   private _activityMonitor: PlaybackActivityMonitor | null = null;
+  private _analyticsVideoSessionId: string | null = null;
+  private _analyticsQueue: Promise<void> = Promise.resolve();
 
   constructor(doc: Document = document) {
     this._doc = doc;
@@ -144,20 +146,42 @@ export class UIInjector {
     // Remove any existing listener before attaching a new one.
     this._teardownPlaybackTelemetry();
 
-    this._activityMonitor = new PlaybackActivityMonitor(video, () =>
-      analyticsReporter.touchSession()
+    this._activityMonitor = new PlaybackActivityMonitor(
+      video,
+      () => analyticsReporter.touchSession(),
+      undefined,
+      (activePlaybackMs) =>
+        this._queueAnalytics(video, (sessionId) =>
+          analyticsReporter.notifyActivePlayback(activePlaybackMs, sessionId)
+        )
     );
     this._activityMonitor.start();
 
     this._playingHandler = (): void => {
-      analyticsReporter.notifyEligiblePlayback().catch(() => {});
+      this._queueAnalytics(video, (sessionId) =>
+        analyticsReporter.notifyEligiblePlayback(sessionId)
+      );
     };
     video.addEventListener('playing', this._playingHandler);
 
     if (!video.paused && !video.ended) {
       // Video is already playing — notify immediately.
-      analyticsReporter.notifyEligiblePlayback().catch(() => {});
+      this._playingHandler();
     }
+  }
+
+  private _queueAnalytics(
+    video: HTMLVideoElement,
+    report: (sessionId: string | null) => Promise<string | null>
+  ): void {
+    this._analyticsQueue = this._analyticsQueue
+      .then(async () => {
+        const sessionId = await report(this._analyticsVideoSessionId);
+        if (sessionId && this._video === video) {
+          this._analyticsVideoSessionId = sessionId;
+        }
+      })
+      .catch(() => {});
   }
 
   private _teardownPlaybackTelemetry(): void {
@@ -173,6 +197,7 @@ export class UIInjector {
     this._sessionGeneration++;
     this._teardownPlaybackTelemetry();
     this._video = null;
+    this._analyticsVideoSessionId = null;
     try {
       chrome.runtime.sendMessage({ type: 'livestream-left' });
     } catch {}

@@ -1,4 +1,5 @@
 import { createDebugLogger } from '../debug/DebugLogger';
+import { resetRuntimeAnalyticsSession } from './AnalyticsSession';
 
 const debug = createDebugLogger('analytics:consent');
 
@@ -36,6 +37,11 @@ export async function setConsent(value: boolean): Promise<void> {
         resolve();
       });
     });
+    try {
+      await resetRuntimeAnalyticsSession();
+    } catch (err) {
+      debug.log('analytics session reset failed:', err);
+    }
   }
 }
 

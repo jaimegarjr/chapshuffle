@@ -1,5 +1,10 @@
 import { settings } from './persistence/PersistenceManager';
 import type { OutgoingPayload } from './analytics/AnalyticsReporter';
+import {
+  ANALYTICS_SESSION_GET_OR_CREATE,
+  ANALYTICS_SESSION_TOUCH,
+  AnalyticsSessionService,
+} from './analytics/AnalyticsSession';
 
 // GA4 Measurement Protocol credentials injected at build time.
 declare const __GA_MEASUREMENT_ID__: string | undefined;
@@ -7,6 +12,7 @@ declare const __GA_API_SECRET__: string | undefined;
 
 const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
 const GA4_DEBUG_ENDPOINT = 'https://www.google-analytics.com/debug/mp/collect';
+const analyticsSession = new AnalyticsSessionService();
 
 function readCredentials(): { measurementId: string; apiSecret: string } | null {
   const mid =
@@ -49,6 +55,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     applyLiveBadge();
   } else if (msg?.type === 'livestream-left') {
     settings.read().then(({ shuffleEnabled }) => applyBadge(shuffleEnabled));
+  } else if (msg?.type === ANALYTICS_SESSION_GET_OR_CREATE) {
+    sendResponse(analyticsSession.getOrCreate());
+  } else if (msg?.type === ANALYTICS_SESSION_TOUCH) {
+    analyticsSession.touch();
+    sendResponse({});
   } else if (msg?.type === 'ga4-deliver') {
     const credentials = readCredentials();
     if (!credentials) {

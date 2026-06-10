@@ -15,6 +15,7 @@ const config = {
     content: 'src/content.ts',
     background: 'src/background.ts',
     popup: 'src/popup/popup.tsx',
+    onboarding: 'src/onboarding/onboarding.tsx',
   },
   outdir: 'dist',
   bundle: true,
@@ -37,6 +38,8 @@ function copyStatic() {
   copyBrandingAssets(path.resolve('dist/assets/branding'));
   fs.copyFileSync('manifest.json', 'dist/manifest.json');
   fs.copyFileSync('src/popup/popup.html', 'dist/popup.html');
+  fs.copyFileSync('src/onboarding/onboarding.html', 'dist/onboarding.html');
+  fs.copyFileSync('src/onboarding/onboarding.css', 'dist/onboarding.css');
   for (const size of [16, 48, 128]) {
     fs.copyFileSync(`icons/icon${size}.png`, `dist/icons/icon${size}.png`);
   }

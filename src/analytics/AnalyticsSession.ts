@@ -29,8 +29,6 @@ export class AnalyticsSessionManager {
 
   touch(now = Date.now()): void {
     if (this._sessionId === null || this._lastActivity === null) return;
-    // An expired session must not be revived by late activity ticks;
-    // only getOrCreate() may rotate it into a fresh session.
     if (now - this._lastActivity > this._timeoutMs) return;
     this._lastActivity = now;
   }

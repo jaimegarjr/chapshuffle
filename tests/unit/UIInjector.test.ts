@@ -117,9 +117,8 @@ function dragItem(fromIndex: number, toIndex: number): void {
   items()[toIndex].dispatchEvent(drop);
 }
 
-// Bounded rounds of runOnlyPendingTimers (not runAllTimers): the activity
-// monitor keeps a live setInterval during playback, which runAllTimers would
-// loop on forever; multiple rounds let the watcher's chained timers settle.
+// runOnlyPendingTimers, not runAllTimers — the activity monitor's live
+// setInterval would make runAllTimers loop forever.
 async function flushAll(): Promise<void> {
   for (let i = 0; i < 10; i++) {
     jest.runOnlyPendingTimers();

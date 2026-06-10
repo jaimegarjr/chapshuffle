@@ -144,9 +144,6 @@ export class UIInjector {
     // Remove any existing listener before attaching a new one.
     this._teardownPlaybackTelemetry();
 
-    // Qualifying playback must keep refreshing the session's inactivity
-    // window, otherwise continuous playback past the timeout would wrongly
-    // expire it and emit a duplicate session-start.
     this._activityMonitor = new PlaybackActivityMonitor(video, () =>
       analyticsReporter.touchSession()
     );

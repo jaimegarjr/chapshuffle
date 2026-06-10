@@ -7,11 +7,6 @@ interface PlaybackTarget {
   removeEventListener(type: string, listener: () => void): void;
 }
 
-/**
- * Reports ongoing qualifying playback as periodic activity ticks.
- * Ticks only while the video is actively playing — paused, ended,
- * and detached time produces none.
- */
 export class PlaybackActivityMonitor {
   private readonly _video: PlaybackTarget;
   private readonly _onActivity: () => void;

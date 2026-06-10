@@ -72,7 +72,6 @@ describe('AnalyticsSessionManager — touch()', () => {
     const t = Date.now();
     const first = mgr.getOrCreate(t);
 
-    // Activity tick arrives after the session already expired
     mgr.touch(t + SESSION_TIMEOUT_MS + 1);
 
     const second = mgr.getOrCreate(t + SESSION_TIMEOUT_MS + 2);
@@ -85,7 +84,6 @@ describe('AnalyticsSessionManager — touch()', () => {
     const t = Date.now();
     const first = mgr.getOrCreate(t);
 
-    // Simulate >60 minutes of qualifying playback refreshed in half-timeout steps
     const step = SESSION_TIMEOUT_MS / 2;
     for (let i = 1; i <= 5; i++) {
       mgr.touch(t + step * i);

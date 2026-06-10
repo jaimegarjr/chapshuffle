@@ -1,6 +1,5 @@
 node_modules/
 compiled/
 dist/
-.claude/
-.codex/
+.claude/settings.local.json
 test-results/

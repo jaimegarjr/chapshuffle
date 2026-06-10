@@ -1,9 +1,10 @@
 # chapshuffle – local development commands
 # Install: https://github.com/casey/just
 
-# Install dependencies
+# Install dependencies and enable the pre-commit CI hook
 install:
     yarn install
+    git config core.hooksPath .githooks
 
 # Run the test suite
 test:
@@ -43,29 +44,3 @@ ci: typecheck format-check test build
 # Package dist/ into a zip ready for Chrome Web Store upload
 zip: ci
     bin/zip
-
-# Start the manual release preparation workflow
-# Usage: just release 1.2.3
-release version:
-    #!/usr/bin/env bash
-    set -e
-    if [ -z "{{version}}" ]; then echo "Usage: just release X.Y.Z"; exit 1; fi
-    if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-      gh workflow run prepare-release.yml -f version="{{version}}"
-      echo "  → started Prepare Release for {{version}}"
-    else
-      echo "Open GitHub Actions → Prepare Release, then run it with version {{version}}"
-    fi
-
-# Tell user how to load the extension in Chrome
-load:
-    @echo ""
-    @echo "  1. Run:  just build"
-    @echo "  2. Open: chrome://extensions"
-    @echo "  3. Enable 'Developer mode' (top-right toggle)"
-    @echo "  4. Click 'Load unpacked'"
-    @echo "  5. Select the dist/ folder: $(pwd)/dist"
-    @echo ""
-    @echo "  Tip: run 'just dev' to auto-rebuild on file changes,"
-    @echo "       then click the refresh icon on the extension card after each rebuild."
-    @echo ""

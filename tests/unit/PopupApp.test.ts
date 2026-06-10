@@ -1,6 +1,7 @@
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { App } from '../../src/popup/popup';
+import { POPUP_LINKS } from '../../src/popup/popup';
 import { ANALYTICS_CONSENT_KEY, INSTALL_ID_KEY } from '../../src/analytics/ConsentManager';
 
 function buildChromeMock(
@@ -40,7 +41,11 @@ function buildChromeMock(
   return {
     runtime: {
       lastError: null as { message: string } | null,
+      getManifest: () => ({ version: '9.9.9-test' }),
       sendMessage: jest.fn().mockResolvedValue({}),
+    },
+    tabs: {
+      create: jest.fn(),
     },
     storage: {
       sync: storageArea(syncStore, 'sync'),
@@ -81,6 +86,12 @@ async function mountApp(): Promise<void> {
   // second pass: initial getConsent()/settings.read() resolve as microtasks
   // after the first act flush, so their state updates need one more flush
   await act(async () => {});
+}
+
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+  }
 }
 
 function consentInput(): HTMLInputElement {
@@ -169,5 +180,68 @@ describe('popup consent toggle', () => {
     expect(() =>
       getChrome().storage.onChanged.emit({ [ANALYTICS_CONSENT_KEY]: { newValue: true } }, 'sync')
     ).not.toThrow();
+  });
+});
+
+describe('popup sections and help links', () => {
+  test('renders Playback, Privacy, and Help with Auto-advance terminology', async () => {
+    await mountApp();
+
+    expect(
+      Array.from(container.querySelectorAll('.section-title')).map((heading) => heading.textContent)
+    ).toEqual(['Playback', 'Privacy', 'Help']);
+    expect(container.textContent).toContain('Auto-advance');
+    expect(container.textContent).not.toContain('Enable shuffle');
+    expect(container.textContent).toContain('Send feedback');
+    expect(container.textContent).toContain('Getting started');
+    expect(container.textContent).toContain('Privacy policy');
+    expect(container.textContent).toContain('Homepage');
+  });
+
+  test('opens every Help destination in a new tab', async () => {
+    await mountApp();
+    const labels = ['Send feedback', 'Getting started', 'Privacy policy', 'Homepage'];
+
+    for (const label of labels) {
+      const button = Array.from(container.querySelectorAll('button')).find((candidate) =>
+        candidate.textContent?.includes(label)
+      );
+      expect(button).toBeDefined();
+      await act(async () => {
+        button!.click();
+        await flushMicrotasks();
+      });
+    }
+
+    expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.feedback });
+    expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.gettingStarted });
+    expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.privacy });
+    expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.homepage });
+  });
+
+  test('feedback analytics is emitted only with consent', async () => {
+    setChrome(buildChromeMock({ [ANALYTICS_CONSENT_KEY]: true }));
+    await mountApp();
+    const feedbackButton = Array.from(container.querySelectorAll('button')).find((candidate) =>
+      candidate.textContent?.includes('Send feedback')
+    );
+
+    await act(async () => {
+      feedbackButton!.click();
+      await flushMicrotasks();
+    });
+
+    expect(getChrome().runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'ga4-deliver',
+      payload: {
+        client_id: expect.any(String),
+        events: [
+          {
+            name: 'feedback_link_opened',
+            params: { extension_version: '9.9.9-test' },
+          },
+        ],
+      },
+    });
   });
 });

@@ -11,7 +11,8 @@ export type AllowedEventName =
   | 'exclusions_updated'
   | 'loop_toggled'
   | 'queue_reordered'
-  | 'session_ended';
+  | 'session_ended'
+  | 'feedback_link_opened';
 
 const ALLOWED_PARAMS: Record<AllowedEventName, ReadonlySet<string>> = {
   shuffle_session_started: new Set(['session_id', 'engagement_time_msec', 'extension_version']),
@@ -40,6 +41,7 @@ const ALLOWED_PARAMS: Record<AllowedEventName, ReadonlySet<string>> = {
     'extension_version',
   ]),
   session_ended: new Set(['session_id', 'end_reason', 'extension_version']),
+  feedback_link_opened: new Set(['extension_version']),
 };
 
 export const ALLOWED_EVENT_NAMES: ReadonlySet<string> = new Set(

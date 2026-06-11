@@ -122,9 +122,9 @@ export function App() {
 
         <div class="row">
           <div class="label-group">
-            <span class="label">Share anonymous usage metrics</span>
+            <span class="label">Share pseudonymous usage metrics</span>
             <span class="sublabel">
-              No video titles or personal data — helps improve ChapShuffle
+              No video titles, URLs, or account details — helps improve ChapShuffle
             </span>
           </div>
           <label class="switch">

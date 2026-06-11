@@ -1,5 +1,8 @@
 node_modules/
 compiled/
 dist/
+.env
+.env.*
+!.env.example
 .claude/settings.local.json
 test-results/

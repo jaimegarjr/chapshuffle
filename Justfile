@@ -26,6 +26,14 @@ typecheck:
 build:
     yarn build
 
+# Bundle with explicitly supplied non-production analytics credentials.
+build-analytics:
+    yarn build:analytics
+
+# Bundle with production analytics credentials. Intended for the protected release environment.
+build-release:
+    yarn build:release
+
 # Rebuild on every file change (keep this running while developing)
 dev:
     yarn watch
@@ -52,4 +60,8 @@ ci: typecheck format-check test build
 
 # Package dist/ into a zip ready for Chrome Web Store upload
 zip: ci
+    bin/zip
+
+# Run CI, replace the telemetry-free bundle with a credentialed release bundle, then package it.
+release-zip: ci build-release
     bin/zip

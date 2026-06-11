@@ -119,6 +119,24 @@ describe('onboarding state', () => {
     expect(navigate).toHaveBeenCalledWith(ONBOARDING_TEST_VIDEO_URL);
   });
 
+  test('persists the toggle immediately and dismisses the popup notice when enabling', async () => {
+    await mountApp();
+
+    await act(async () => {
+      consentInput().click();
+    });
+
+    expect(getChrome().storage.sync._store[ANALYTICS_CONSENT_KEY]).toBe(true);
+    expect(getChrome().storage.sync._store[ANALYTICS_NOTICE_DISMISSED_KEY]).toBe(true);
+
+    await act(async () => {
+      consentInput().click();
+    });
+
+    expect(getChrome().storage.sync._store[ANALYTICS_CONSENT_KEY]).toBe(false);
+    expect(getChrome().storage.sync._store[ANALYTICS_NOTICE_DISMISSED_KEY]).toBe(true);
+  });
+
   test('revisit mode changes the welcome state without touching tutorial completion', async () => {
     window.history.replaceState({}, '', '/onboarding.html?mode=revisit');
     (global as unknown as { chrome: ChromeMock }).chrome = buildChromeMock({

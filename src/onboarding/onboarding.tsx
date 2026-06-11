@@ -61,6 +61,13 @@ export function OnboardingApp({ navigate }: OnboardingAppProps) {
     return subscribeConsent(setConsentState);
   }, []);
 
+  const handleConsentToggle = (event: Event) => {
+    const checked = (event.currentTarget as HTMLInputElement).checked;
+    setConsentState(checked);
+    void setConsent(checked);
+    if (checked) void setAnalyticsNoticeDismissed();
+  };
+
   const handleTry = async (): Promise<void> => {
     setSaving(true);
     setError('');
@@ -118,7 +125,7 @@ export function OnboardingApp({ navigate }: OnboardingAppProps) {
               type="checkbox"
               checked={consent}
               disabled={!ready || saving}
-              onChange={(event) => setConsentState(event.currentTarget.checked)}
+              onChange={handleConsentToggle}
             />
             <span class="consent-slider" aria-hidden="true" />
           </label>

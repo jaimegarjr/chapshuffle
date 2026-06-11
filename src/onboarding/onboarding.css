@@ -148,13 +148,6 @@
   min-height: 104px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .consent-slider,
-  .consent-slider::before {
-    transition: none;
-  }
-}
-
 @media (max-width: 700px) {
   .onboarding-card {
     grid-template-columns: 1fr;

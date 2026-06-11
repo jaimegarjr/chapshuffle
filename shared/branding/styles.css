@@ -480,13 +480,6 @@ a.card-cta:hover {
   text-decoration-color: currentColor;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .back-link,
-  .button {
-    transition: none;
-  }
-}
-
 @media (max-width: 700px) {
   body {
     font-size: 17px;

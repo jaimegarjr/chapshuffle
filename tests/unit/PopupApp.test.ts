@@ -301,4 +301,12 @@ describe('existing-user analytics notice', () => {
     expect(container.querySelector('.analytics-notice')).toBeNull();
     expect(consentInput().checked).toBe(false);
   });
+
+  test('stays hidden whenever consent is already enabled, even without a dismissal', async () => {
+    setChrome(buildChromeMock({ [ANALYTICS_CONSENT_KEY]: true }));
+    await mountApp();
+
+    expect(container.querySelector('.analytics-notice')).toBeNull();
+    expect(consentInput().checked).toBe(true);
+  });
 });

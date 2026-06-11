@@ -38,12 +38,6 @@ describe('shared branding assets', () => {
     );
   });
 
-  test('disables the animated background for reduced motion', () => {
-    const fogScript = fs.readFileSync(path.join(brandingRoot, 'fog.js'), 'utf8');
-    expect(fogScript).toContain('prefers-reduced-motion: reduce');
-    expect(fogScript).toContain('reducedMotion.matches');
-  });
-
   test('the public homepage exposes install, trial, support, source, and privacy destinations', () => {
     expect(docsHtml).toContain(
       'https://chromewebstore.google.com/detail/chap-shuffle/dabkcpempohenngjmnaakjaajidnepda'

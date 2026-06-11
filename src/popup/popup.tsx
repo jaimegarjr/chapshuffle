@@ -110,7 +110,7 @@ export function App() {
         <span class="title">ChapShuffle</span>
       </header>
 
-      {analyticsNoticeVisible && (
+      {analyticsNoticeVisible && !consent && (
         <aside class="analytics-notice" aria-labelledby="analytics-notice-title">
           <strong id="analytics-notice-title">Optional usage analytics</strong>
           <p>

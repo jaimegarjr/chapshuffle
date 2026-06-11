@@ -11,6 +11,7 @@ import {
 // GA4 Measurement Protocol credentials injected at build time.
 declare const __GA_MEASUREMENT_ID__: string | undefined;
 declare const __GA_API_SECRET__: string | undefined;
+declare const __GA_DEBUG_ENABLED__: boolean;
 
 const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
 const GA4_DEBUG_ENDPOINT = 'https://www.google-analytics.com/debug/mp/collect';
@@ -86,6 +87,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       );
     return true; // keep message channel open for async response
   } else if (msg?.type === 'ga4-debug-validate') {
+    if (!__GA_DEBUG_ENABLED__) {
+      sendResponse({ error: 'debug validation is disabled in this build' });
+      return false;
+    }
     const credentials = readCredentials();
     if (!credentials) {
       sendResponse({ error: 'no credentials configured' });

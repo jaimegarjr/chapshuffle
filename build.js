@@ -2,13 +2,9 @@ const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
 const { copyBrandingAssets } = require('./scripts/sync-branding');
+const { resolveAnalyticsBuildConfig } = require('./scripts/analytics-build-config');
 const watch = process.argv.includes('--watch');
-const prod = process.argv.includes('--prod');
-
-// GA4 Measurement Protocol credentials — injected from environment, never committed.
-// Missing credentials are treated as telemetry disabled rather than a build failure.
-const gaMeasurementId = process.env.GA_MEASUREMENT_ID ?? '';
-const gaApiSecret = process.env.GA_API_SECRET ?? '';
+const analyticsBuild = resolveAnalyticsBuildConfig(process.argv.slice(2), process.env);
 
 const config = {
   entryPoints: {
@@ -26,11 +22,12 @@ const config = {
   jsx: 'automatic',
   jsxImportSource: 'preact',
   define: {
-    __DEV__: String(!prod),
-    __GA_MEASUREMENT_ID__: JSON.stringify(gaMeasurementId),
-    __GA_API_SECRET__: JSON.stringify(gaApiSecret),
+    __DEV__: String(!analyticsBuild.prod),
+    __GA_MEASUREMENT_ID__: JSON.stringify(analyticsBuild.measurementId),
+    __GA_API_SECRET__: JSON.stringify(analyticsBuild.apiSecret),
+    __GA_DEBUG_ENABLED__: String(analyticsBuild.debugEndpointEnabled),
   },
-  minify: prod,
+  minify: analyticsBuild.prod,
 };
 
 function copyStatic() {
@@ -57,7 +54,7 @@ async function main() {
   } else {
     await ctx.rebuild();
     await ctx.dispose();
-    console.log('[chapshuffle] build complete → dist/');
+    console.log(`[chapshuffle] build complete → dist/ (analytics: ${analyticsBuild.mode})`);
   }
 }
 

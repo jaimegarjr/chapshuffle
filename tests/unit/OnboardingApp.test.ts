@@ -76,7 +76,7 @@ async function mountApp(navigate = jest.fn()): Promise<jest.Mock> {
 
 function consentInput(): HTMLInputElement {
   return container.querySelector(
-    'input[aria-label="Share anonymous usage metrics"]'
+    'input[aria-label="Share optional usage metrics"]'
   ) as HTMLInputElement;
 }
 

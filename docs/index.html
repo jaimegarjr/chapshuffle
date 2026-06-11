@@ -162,24 +162,71 @@
           </div>
           <p class="privacy-intro">
             Chap Shuffle is a Chrome extension that shuffles YouTube video chapters for a randomized
-            viewing experience. This policy describes how the extension handles your data.
+            viewing experience. This policy describes how the extension handles your data. Last
+            updated: June 11, 2026.
           </p>
 
-          <h3>Data collection</h3>
-          <p>Chap Shuffle does not collect, transmit, or share any personal data. The extension:</p>
+          <h3>Optional usage analytics</h3>
+          <p>
+            Chap Shuffle asks for your consent before sending usage analytics to Google Analytics 4
+            (GA4). Analytics are off by default and can be turned off again at any time in the
+            extension popup.
+          </p>
+          <p>When you opt in, Chap Shuffle collects:</p>
           <ul>
-            <li>Does not make any network requests</li>
-            <li>Does not track your browsing activity</li>
-            <li>Does not collect analytics or usage data</li>
-            <li>Does not share any information with third parties</li>
+            <li>
+              A randomly generated, pseudonymous installation ID and temporary analytics session ID
+            </li>
+            <li>The installed extension version</li>
+            <li>
+              Feature interactions such as reshuffling, queue reordering, exclusions, looping, and
+              chapter completion or skipping
+            </li>
+            <li>
+              Coarse playback activity, queue positions and lengths, excluded chapter counts, and
+              session-ending reasons
+            </li>
+            <li>
+              Standard network and device information received by Google when an analytics request
+              is made, such as IP address and browser user agent
+            </li>
           </ul>
+          <p>Chap Shuffle does not collect or send:</p>
+          <ul>
+            <li>YouTube video IDs, titles, URLs, channel names, or chapter names</li>
+            <li>Your name, email address, Google or YouTube account identity, or advertising ID</li>
+            <li>
+              Your general browsing history or activity on pages other than Chap Shuffle controls
+            </li>
+            <li>Page content, comments, searches, or form entries</li>
+          </ul>
+          <p>
+            The installation ID identifies an extension installation, not a known person, but it is
+            pseudonymous rather than anonymous because events from the same installation can be
+            associated over time. Analytics are used only to understand aggregate product usage and
+            improve Chap Shuffle. Advertising features and Google Signals are disabled.
+          </p>
+
+          <h3>Analytics sharing and retention</h3>
+          <p>
+            Opt-in analytics are sent to Google Analytics, a service provided by Google. Google
+            processes this data on Chap Shuffle's behalf under its analytics terms. Chap Shuffle
+            does not sell analytics data or use it for advertising, profiling, or cross-site
+            tracking. Analytics data is configured to use GA4's shortest useful retention period.
+          </p>
+          <p>
+            Turning analytics off stops new events and deletes the pseudonymous installation ID from
+            Chrome local storage. Data already sent to GA4 remains subject to the configured
+            retention period.
+          </p>
 
           <h3>Local storage</h3>
           <p>
             The extension saves your preferences (shuffle enabled, minimum chapters, queue end
-            behavior) using Chrome's built-in <code>chrome.storage.sync</code> API. This data is
-            stored locally in your browser and synced across your Chrome profile by Google — it is
-            never accessed by us.
+            behavior, and analytics consent) using Chrome's built-in
+            <code>chrome.storage.sync</code> API. Chrome may sync these preferences across your
+            signed-in Chrome profile. If analytics are enabled, the pseudonymous installation ID is
+            stored in <code>chrome.storage.local</code> and is not synced by Chap Shuffle.
           </p>
 
           <h3>Permissions</h3>
@@ -189,6 +236,10 @@
             <li>
               <strong>youtube.com access</strong> — to inject the shuffle controls into the YouTube
               player
+            </li>
+            <li>
+              <strong>google-analytics.com access</strong> — to send optional analytics after
+              consent
             </li>
           </ul>
 

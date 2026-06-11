@@ -99,7 +99,7 @@ async function flushMicrotasks(): Promise<void> {
 function consentInput(): HTMLInputElement {
   const rows = Array.from(container.querySelectorAll('.row'));
   const row = rows.find(
-    (r) => r.querySelector('.label')?.textContent === 'Share anonymous usage metrics'
+    (r) => r.querySelector('.label')?.textContent === 'Share optional usage metrics'
   );
   if (!row) throw new Error('consent row not found');
   return row.querySelector('input[type="checkbox"]') as HTMLInputElement;

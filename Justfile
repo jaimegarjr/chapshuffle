@@ -29,11 +29,13 @@ typecheck:
 build:
     yarn build
 
-# Production build with GA credentials injected from the environment (.env)
-build-prod:
-    @test -n "${GA_MEASUREMENT_ID:-}" || { echo "GA_MEASUREMENT_ID is not set — copy .env.example to .env and fill it in"; exit 1; }
-    @test -n "${GA_API_SECRET:-}" || { echo "GA_API_SECRET is not set — copy .env.example to .env and fill it in"; exit 1; }
-    yarn build:prod
+# Bundle with explicitly supplied non-production analytics credentials.
+build-analytics:
+    yarn build:analytics
+
+# Bundle with production analytics credentials. Intended for the protected release environment.
+build-release:
+    yarn build:release
 
 # Rebuild on every file change (keep this running while developing)
 dev:
@@ -61,4 +63,8 @@ ci: typecheck format-check test build
 
 # Package dist/ into a zip ready for Chrome Web Store upload
 zip: ci
+    bin/zip
+
+# Run CI, replace the telemetry-free bundle with a credentialed release bundle, then package it.
+release-zip: ci build-release
     bin/zip

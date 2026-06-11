@@ -6,6 +6,14 @@ import {
   type QueueEndBehavior,
 } from '../persistence/PersistenceManager';
 import { getConsent, setConsent, subscribeConsent } from '../analytics/ConsentManager';
+import { analyticsReporter } from '../analytics/AnalyticsReporter';
+
+export const POPUP_LINKS = {
+  feedback: 'https://forms.gle/1Sa7R5roqwko2suSA',
+  gettingStarted: 'https://jaimegarjr.github.io/chapshuffle/',
+  privacy: 'https://jaimegarjr.github.io/chapshuffle/#privacy',
+  homepage: 'https://jaimegarjr.github.io/chapshuffle/',
+} as const;
 
 export function App() {
   const [enabled, setEnabled] = useState(DEFAULT_SETTINGS.shuffleEnabled);
@@ -48,6 +56,13 @@ export function App() {
     setConsent(checked);
   };
 
+  const openLink = async (url: string, trackFeedback = false): Promise<void> => {
+    if (trackFeedback) {
+      await analyticsReporter.notifyFeedbackLinkOpened();
+    }
+    chrome.tabs.create({ url });
+  };
+
   return (
     <div>
       <header class="header">
@@ -72,72 +87,127 @@ export function App() {
       </header>
 
       <div class="settings">
-        <div class="row">
-          <div class="label-group">
-            <span class="label">Enable shuffle</span>
-            <span class="sublabel">Auto-advance through shuffled chapters</span>
+        <section class="section" aria-labelledby="playback-heading">
+          <h2 id="playback-heading" class="section-title">
+            Playback
+          </h2>
+          <div class="row">
+            <div class="label-group">
+              <span class="label">Auto-advance</span>
+              <span class="sublabel">Play chapters in shuffled queue order</span>
+            </div>
+            <label class="switch">
+              <input
+                aria-label="Auto-advance"
+                type="checkbox"
+                checked={enabled}
+                onChange={handleToggle}
+              />
+              <span class="slider" />
+            </label>
           </div>
-          <label class="switch">
-            <input type="checkbox" checked={enabled} onChange={handleToggle} />
-            <span class="slider" />
-          </label>
-        </div>
 
-        <div class="row">
-          <div class="label-group">
-            <span class="label">Min. chapters</span>
-            <span class="sublabel">Activate on videos with at least N chapters</span>
+          <div class="row">
+            <div class="label-group">
+              <span class="label">Min. chapters</span>
+              <span class="sublabel">Activate on videos with at least N chapters</span>
+            </div>
+            <div class="stepper">
+              <button
+                class="step-btn"
+                disabled={minChapters <= 2}
+                onClick={() => handleStepper(-1)}
+              >
+                −
+              </button>
+              <span class="step-value">{minChapters}</span>
+              <button
+                class="step-btn"
+                disabled={minChapters >= 10}
+                onClick={() => handleStepper(1)}
+              >
+                +
+              </button>
+            </div>
           </div>
-          <div class="stepper">
-            <button class="step-btn" disabled={minChapters <= 2} onClick={() => handleStepper(-1)}>
-              −
-            </button>
-            <span class="step-value">{minChapters}</span>
-            <button class="step-btn" disabled={minChapters >= 10} onClick={() => handleStepper(1)}>
-              +
-            </button>
-          </div>
-        </div>
 
-        <div class="row row-col">
-          <div class="label-group">
-            <span class="label">When queue ends</span>
-            <span class="sublabel">What happens after the last chapter plays</span>
+          <div class="row row-col">
+            <div class="label-group">
+              <span class="label">When queue ends</span>
+              <span class="sublabel">What happens after the last chapter plays</span>
+            </div>
+            <div class="segmented">
+              <button
+                class={`seg-btn${queueEnd === 'reshuffle' ? ' seg-active' : ''}`}
+                onClick={() => handleQueueEnd('reshuffle')}
+              >
+                Reshuffle
+              </button>
+              <button
+                class={`seg-btn${queueEnd === 'end-video' ? ' seg-active' : ''}`}
+                onClick={() => handleQueueEnd('end-video')}
+              >
+                End video
+              </button>
+            </div>
           </div>
-          <div class="segmented">
-            <button
-              class={`seg-btn${queueEnd === 'reshuffle' ? ' seg-active' : ''}`}
-              onClick={() => handleQueueEnd('reshuffle')}
-            >
-              Reshuffle
-            </button>
-            <button
-              class={`seg-btn${queueEnd === 'end-video' ? ' seg-active' : ''}`}
-              onClick={() => handleQueueEnd('end-video')}
-            >
-              End video
-            </button>
-          </div>
-        </div>
 
-        <div class="row">
-          <div class="label-group">
-            <span class="label">Share anonymous usage metrics</span>
-            <span class="sublabel">
-              No video titles or personal data — helps improve ChapShuffle
-            </span>
+          <p class="hint">
+            Click the <strong>shuffle icon</strong> in the YouTube player on any video with{' '}
+            {minChapters}+ chapters.
+          </p>
+        </section>
+
+        <section class="section" aria-labelledby="privacy-heading">
+          <h2 id="privacy-heading" class="section-title">
+            Privacy
+          </h2>
+          <div class="row">
+            <div class="label-group">
+              <span class="label">Share anonymous usage metrics</span>
+              <span class="sublabel">
+                No video titles or personal data — helps improve ChapShuffle
+              </span>
+            </div>
+            <label class="switch">
+              <input
+                aria-label="Share anonymous usage metrics"
+                type="checkbox"
+                checked={consent}
+                onChange={handleConsentToggle}
+              />
+              <span class="slider" />
+            </label>
           </div>
-          <label class="switch">
-            <input type="checkbox" checked={consent} onChange={handleConsentToggle} />
-            <span class="slider" />
-          </label>
-        </div>
+        </section>
+
+        <section class="section" aria-labelledby="help-heading">
+          <h2 id="help-heading" class="section-title">
+            Help
+          </h2>
+          <div class="help-links">
+            <button class="help-link" onClick={() => void openLink(POPUP_LINKS.feedback, true)}>
+              <span>
+                <strong>Send feedback</strong>
+                <small>Share an idea or report a problem</small>
+              </span>
+              <span aria-hidden="true">↗</span>
+            </button>
+            <button class="help-link" onClick={() => void openLink(POPUP_LINKS.gettingStarted)}>
+              <span>Getting started</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+            <button class="help-link" onClick={() => void openLink(POPUP_LINKS.privacy)}>
+              <span>Privacy policy</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+            <button class="help-link" onClick={() => void openLink(POPUP_LINKS.homepage)}>
+              <span>Homepage</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+        </section>
       </div>
-
-      <p class="hint">
-        Click the <strong>shuffle icon</strong> in the YouTube player on any video with{' '}
-        {minChapters}+ chapters.
-      </p>
     </div>
   );
 }

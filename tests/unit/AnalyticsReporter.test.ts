@@ -217,6 +217,27 @@ describe('AnalyticsReporter — outgoing payload shape', () => {
     });
   });
 
+  test('feedback link events are consent-gated and carry no content parameters', async () => {
+    const chrome = consentedChrome('client-feedback');
+    setChrome(chrome);
+    const reporter = makeReporter();
+
+    await reporter.notifyFeedbackLinkOpened();
+
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'ga4-deliver',
+      payload: {
+        client_id: 'client-feedback',
+        events: [
+          {
+            name: 'feedback_link_opened',
+            params: { extension_version: '9.9.9-test' },
+          },
+        ],
+      },
+    });
+  });
+
   test('resuming the same video in the same session does not repeat its start event', async () => {
     const chrome = consentedChrome('client-resume');
     setChrome(chrome);

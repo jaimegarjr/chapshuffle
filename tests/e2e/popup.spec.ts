@@ -3,7 +3,7 @@ import { expect, resetExtensionStorage, test } from './fixtures';
 test('popup settings persist across extension page reloads', async ({ page, extensionId }) => {
   await resetExtensionStorage(page, extensionId);
 
-  const shuffleRow = page.locator('.row', { hasText: 'Enable shuffle' });
+  const shuffleRow = page.locator('.row', { hasText: 'Auto-advance' });
   const shuffleToggle = shuffleRow.getByRole('checkbox');
   await expect(shuffleToggle).not.toBeChecked();
   await shuffleRow.locator('.switch').click();

@@ -7,7 +7,8 @@ export const ONBOARDING_TEST_VIDEO_URL =
   'https://www.youtube.com/watch?v=pgQRcqh1u7U&si=4WQlXVnY1EqxFjFT';
 
 export const ONBOARDING_LINKS = {
-  feedback: 'https://forms.gle/1Sa7R5roqwko2suSA',
+  feedback: 'https://forms.gle/n3ckHKVrPcsDWK6t5',
+  support: 'https://ko-fi.com/jaimegarjr',
   privacy: 'https://jaimegarjr.github.io/chapshuffle/#privacy',
   homepage: 'https://jaimegarjr.github.io/chapshuffle/',
 } as const;
@@ -138,9 +139,26 @@ export function OnboardingApp({ navigate }: OnboardingAppProps) {
         </div>
 
         <div class="cards onboarding-links" aria-label="More resources">
-          <a class="card" href={ONBOARDING_LINKS.feedback} target="_blank" rel="noopener">
-            <span class="card-title">Send feedback</span>
-            <span class="card-sub">Share an idea or report a problem</span>
+          <a
+            class="card card-feedback"
+            href={ONBOARDING_LINKS.feedback}
+            target="_blank"
+            rel="noopener"
+          >
+            <span class="card-title">✎ Share feedback</span>
+            <span class="card-sub">Report bugs or request features in a quick form</span>
+          </a>
+          <a
+            class="card card-donate"
+            href={ONBOARDING_LINKS.support}
+            target="_blank"
+            rel="noopener"
+          >
+            <span class="card-title">
+              <img class="card-icon" src="./assets/branding/icons/kofi.svg" alt="" />
+              Support development
+            </span>
+            <span class="card-sub">ko-fi.com/jaimegarjr</span>
           </a>
           <a class="card" href={ONBOARDING_LINKS.privacy} target="_blank" rel="noopener">
             <span class="card-title">§ Privacy policy</span>

@@ -141,12 +141,11 @@
 }
 
 .onboarding-links {
-  grid-template-columns: repeat(3, 1fr);
   margin-top: 54px;
 }
 
 .onboarding-links .card {
-  min-height: 118px;
+  min-height: 104px;
 }
 
 @media (prefers-reduced-motion: reduce) {

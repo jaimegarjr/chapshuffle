@@ -19,7 +19,7 @@ cd "$REPO_ROOT"
 # capture the fetch inside the worker, so nothing reaches real GA4.
 GA_MEASUREMENT_ID="${GA_MEASUREMENT_ID:-G-E2ETEST}" \
   GA_API_SECRET="${GA_API_SECRET:-e2e-test-secret}" \
-  yarn build:prod
+  yarn build:analytics
 
 TEST_ARGS=()
 if [[ -n "$TARGET" ]]; then

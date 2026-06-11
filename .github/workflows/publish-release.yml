@@ -16,6 +16,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: write
 
@@ -59,7 +60,10 @@ jobs:
           fi
 
       - name: Build & package
-        run: just zip
+        env:
+          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
+        run: just release-zip
 
       - name: Create release tag
         run: |

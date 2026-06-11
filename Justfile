@@ -1,6 +1,9 @@
 # chapshuffle – local development commands
 # Install: https://github.com/casey/just
 
+# Load GA secrets from .env when present (see .env.example)
+set dotenv-load := true
+
 # Install dependencies and enable the pre-commit CI hook
 install:
     yarn install
@@ -25,6 +28,12 @@ typecheck:
 # Bundle the extension into dist/ (required before loading in Chrome)
 build:
     yarn build
+
+# Production build with GA credentials injected from the environment (.env)
+build-prod:
+    @test -n "${GA_MEASUREMENT_ID:-}" || { echo "GA_MEASUREMENT_ID is not set — copy .env.example to .env and fill it in"; exit 1; }
+    @test -n "${GA_API_SECRET:-}" || { echo "GA_API_SECRET is not set — copy .env.example to .env and fill it in"; exit 1; }
+    yarn build:prod
 
 # Rebuild on every file change (keep this running while developing)
 dev:

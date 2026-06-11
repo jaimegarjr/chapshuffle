@@ -15,7 +15,7 @@ import {
 
 export const POPUP_LINKS = {
   feedback: 'https://forms.gle/1Sa7R5roqwko2suSA',
-  gettingStarted: 'https://jaimegarjr.github.io/chapshuffle/',
+  gettingStarted: 'onboarding.html?mode=revisit',
   privacy: 'https://jaimegarjr.github.io/chapshuffle/#privacy',
   homepage: 'https://jaimegarjr.github.io/chapshuffle/',
 } as const;
@@ -110,7 +110,7 @@ export function App() {
         <span class="title">ChapShuffle</span>
       </header>
 
-      {analyticsNoticeVisible && (
+      {analyticsNoticeVisible && !consent && (
         <aside class="analytics-notice" aria-labelledby="analytics-notice-title">
           <strong id="analytics-notice-title">Optional usage analytics</strong>
           <p>
@@ -237,7 +237,10 @@ export function App() {
               </span>
               <span aria-hidden="true">↗</span>
             </button>
-            <button class="help-link" onClick={() => void openLink(POPUP_LINKS.gettingStarted)}>
+            <button
+              class="help-link"
+              onClick={() => void openLink(chrome.runtime.getURL(POPUP_LINKS.gettingStarted))}
+            >
               <span>Getting started</span>
               <span aria-hidden="true">↗</span>
             </button>

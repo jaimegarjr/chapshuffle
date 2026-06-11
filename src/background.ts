@@ -42,7 +42,7 @@ settings.read().then(({ shuffleEnabled }) => applyBadge(shuffleEnabled));
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') {
     settings.update({ shuffleEnabled: true }).then(() => applyBadge(true));
-    chrome.tabs.create({ url: 'https://jaimegarjr.github.io/chapshuffle/' });
+    chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
   }
 });
 

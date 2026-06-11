@@ -43,6 +43,7 @@ function buildChromeMock(
     runtime: {
       lastError: null as { message: string } | null,
       getManifest: () => ({ version: '9.9.9-test' }),
+      getURL: (path: string) => `chrome-extension://test-extension/${path}`,
       sendMessage: jest.fn().mockResolvedValue({}),
     },
     tabs: {
@@ -223,7 +224,9 @@ describe('popup sections and help links', () => {
     }
 
     expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.feedback });
-    expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.gettingStarted });
+    expect(getChrome().tabs.create).toHaveBeenCalledWith({
+      url: `chrome-extension://test-extension/${POPUP_LINKS.gettingStarted}`,
+    });
     expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.privacy });
     expect(getChrome().tabs.create).toHaveBeenCalledWith({ url: POPUP_LINKS.homepage });
   });
@@ -297,5 +300,13 @@ describe('existing-user analytics notice', () => {
 
     expect(container.querySelector('.analytics-notice')).toBeNull();
     expect(consentInput().checked).toBe(false);
+  });
+
+  test('stays hidden whenever consent is already enabled, even without a dismissal', async () => {
+    setChrome(buildChromeMock({ [ANALYTICS_CONSENT_KEY]: true }));
+    await mountApp();
+
+    expect(container.querySelector('.analytics-notice')).toBeNull();
+    expect(consentInput().checked).toBe(true);
   });
 });

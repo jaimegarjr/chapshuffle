@@ -1,4 +1,3 @@
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const views = new Map(
   [...document.querySelectorAll('[data-view]')].map((view) => [view.dataset.view, view]),
 );
@@ -38,30 +37,26 @@ async function transitionTo(nextView) {
 
   isTransitioning = true;
 
-  if (!prefersReducedMotion.matches) {
-    await outgoing.animate(
-      [
-        { opacity: 1, transform: 'translateX(0)' },
-        { opacity: 0, transform: `translateX(${-24 * direction}px)` },
-      ],
-      { duration: 180, easing: 'ease-in', fill: 'forwards' },
-    ).finished;
-  }
+  await outgoing.animate(
+    [
+      { opacity: 1, transform: 'translateX(0)' },
+      { opacity: 0, transform: `translateX(${-24 * direction}px)` },
+    ],
+    { duration: 180, easing: 'ease-in', fill: 'forwards' },
+  ).finished;
 
   outgoing.hidden = true;
   outgoing.getAnimations().forEach((animation) => animation.cancel());
   incoming.hidden = false;
   window.scrollTo({ top: 0, behavior: 'auto' });
 
-  if (!prefersReducedMotion.matches) {
-    await incoming.animate(
-      [
-        { opacity: 0, transform: `translateX(${24 * direction}px)` },
-        { opacity: 1, transform: 'translateX(0)' },
-      ],
-      { duration: 260, easing: 'ease-out' },
-    ).finished;
-  }
+  await incoming.animate(
+    [
+      { opacity: 0, transform: `translateX(${24 * direction}px)` },
+      { opacity: 1, transform: 'translateX(0)' },
+    ],
+    { duration: 260, easing: 'ease-out' },
+  ).finished;
 
   currentView = nextView;
   document.title = titles[currentView];

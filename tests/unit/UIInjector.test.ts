@@ -1,9 +1,25 @@
 import { UIInjector } from '../../src/ui/UIInjector';
 import { analyticsReporter } from '../../src/analytics/AnalyticsReporter';
+import type { Chapter } from '../../src/types';
 import {
   ACTIVE_PLAYBACK_HEARTBEAT_MS,
   ACTIVITY_REFRESH_INTERVAL_MS,
 } from '../../src/analytics/PlaybackActivityMonitor';
+
+// Chapters now arrive from the MAIN-world page script via ChapterBridge. Mock
+// the bridge so tests can publish chapters synchronously instead of simulating
+// the cross-world postMessage round-trip.
+let mockPageChapters: Chapter[] | null = null;
+jest.mock('../../src/youtube/ChapterBridge', () => ({
+  ChapterBridge: class {
+    start(): void {}
+    stop(): void {}
+    request(): void {}
+    current(): Chapter[] | null {
+      return mockPageChapters;
+    }
+  },
+}));
 
 jest.mock('../../src/analytics/AnalyticsReporter', () => ({
   analyticsReporter: {
@@ -68,24 +84,19 @@ function buildChromeMock(initialStore: Record<string, unknown> = {}) {
 beforeEach(() => {
   (global as unknown as Record<string, unknown>).chrome = buildChromeMock();
   document.body.innerHTML = '';
+  mockPageChapters = null;
 });
 afterEach(() => {
   delete (global as unknown as Record<string, unknown>).chrome;
 });
 
-function addChapterItems(doc: Document, count: number): void {
-  for (let i = 0; i < count; i++) {
-    const item = doc.createElement('ytd-macro-markers-list-item-renderer');
-    const ts = doc.createElement('span');
-    ts.className = 'time-string';
-    ts.textContent = `${i}:00`;
-    const title = doc.createElement('h4');
-    title.className = 'yt-simple-endpoint';
-    title.textContent = `Chapter ${i + 1}`;
-    item.appendChild(ts);
-    item.appendChild(title);
-    doc.body.appendChild(item);
-  }
+// Publishes `count` chapters as if the page-world script relayed them. Matches
+// the previous DOM fixture: titles "Chapter 1..N" at minute boundaries.
+function addChapterItems(_doc: Document, count: number): void {
+  mockPageChapters = Array.from({ length: count }, (_, i) => ({
+    title: `Chapter ${i + 1}`,
+    startSeconds: i * 60,
+  }));
 }
 
 function addPlayerControls(doc: Document): Element {

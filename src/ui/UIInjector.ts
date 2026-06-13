@@ -11,6 +11,7 @@ import {
 import { InjectedQueueShell } from './InjectedQueueShell';
 import { TutorialManager } from './Tutorial';
 import { YouTubeChapterWatcher } from '../youtube/YouTubeChapterWatcher';
+import { ChapterBridge } from '../youtube/ChapterBridge';
 import { analyticsReporter } from '../analytics/AnalyticsReporter';
 import { PlaybackActivityMonitor } from '../analytics/PlaybackActivityMonitor';
 
@@ -20,6 +21,7 @@ export class UIInjector {
   private readonly _doc: Document;
   private readonly _shell: InjectedQueueShell;
   private _watcher: YouTubeChapterWatcher | null = null;
+  private _chapterBridge: ChapterBridge | null = null;
   private _session: SessionController | null = null;
   private _autoAdvance = DEFAULT_SETTINGS.shuffleEnabled;
   private _minChapters = DEFAULT_SETTINGS.minChapters;
@@ -45,12 +47,16 @@ export class UIInjector {
     this._queueEndBehavior = initialSettings.queueEndBehavior;
     this._unsubscribeSettings = settings.subscribe((changes) => this._onSettingsChange(changes));
     this._shell.injectStyles();
+    this._chapterBridge = new ChapterBridge(this._doc.defaultView ?? window);
+    this._chapterBridge.start();
     this._watcher = new YouTubeChapterWatcher(this._doc, {
       minChapters: this._minChapters,
       isInjected: () => this._shell.isMounted,
       onNavigate: () => this._resetInjectedState(),
       onChaptersReady: (chapters, controlsBar) => this._inject(chapters, controlsBar),
       onLivestream: () => chrome.runtime.sendMessage({ type: 'livestream-detected' }),
+      readChapters: () => this._chapterBridge?.current() ?? null,
+      requestRefresh: () => this._chapterBridge?.request(),
     });
     this._watcher.start();
   }
@@ -222,6 +228,8 @@ export class UIInjector {
   destroy(): void {
     this._watcher?.destroy();
     this._watcher = null;
+    this._chapterBridge?.stop();
+    this._chapterBridge = null;
     this._unsubscribeSettings?.();
     this._unsubscribeSettings = null;
     this._tutorial?.destroy();

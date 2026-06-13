@@ -13,6 +13,7 @@ const gaApiSecret = process.env.GA_API_SECRET ?? '';
 const config = {
   entryPoints: {
     content: 'src/content.ts',
+    pageChapters: 'src/youtube/pageChapters.ts',
     background: 'src/background.ts',
     popup: 'src/popup/popup.tsx',
     onboarding: 'src/onboarding/onboarding.tsx',

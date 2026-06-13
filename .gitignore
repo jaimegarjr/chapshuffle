@@ -3,3 +3,4 @@ compiled/
 dist/
 .claude/settings.local.json
 test-results/
+.env

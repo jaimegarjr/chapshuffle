@@ -1,6 +1,5 @@
 (function initializeChapShuffleFog() {
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  if (reducedMotion.matches || !window.VANTA?.FOG) {
+  if (!window.VANTA?.FOG) {
     return;
   }
 

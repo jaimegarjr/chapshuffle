@@ -69,9 +69,23 @@ describe('validateEventPayload()', () => {
       'loop_toggled',
       'queue_reordered',
       'session_ended',
+      'feedback_link_opened',
     ]) {
       expect(ALLOWED_EVENT_NAMES.has(eventName)).toBe(true);
     }
+  });
+
+  test('feedback events allow no content-derived parameters', () => {
+    expect(
+      validateEventPayload('feedback_link_opened', {
+        extension_version: '1.2.3',
+        url: 'https://forms.gle/private',
+        form_response: 'private',
+      })
+    ).toEqual({
+      name: 'feedback_link_opened',
+      params: { extension_version: '1.2.3' },
+    });
   });
 
   test('chapter events strip names, timestamps, and other content-derived values', () => {

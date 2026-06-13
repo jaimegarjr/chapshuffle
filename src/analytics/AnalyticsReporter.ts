@@ -21,6 +21,7 @@ export type ProductAnalyticsEventName = Exclude<
   | 'shuffled_video_started'
   | 'active_playback_heartbeat'
   | 'session_ended'
+  | 'feedback_link_opened'
 >;
 
 interface PreparedPlaybackEvents {
@@ -139,6 +140,21 @@ export class AnalyticsReporter {
       await this._session.markInactive(reason);
     } catch (err) {
       debug.log('analytics inactivity marker error:', err);
+    }
+  }
+
+  async notifyFeedbackLinkOpened(): Promise<void> {
+    try {
+      if (!(await getConsent())) return;
+      const installId = await getOrCreateInstallId();
+      const event = validateEventPayload('feedback_link_opened', {
+        extension_version: chrome.runtime.getManifest().version,
+      });
+      if (!event) return;
+      this._batch.enqueue(installId, [event]);
+      await this._batch.flush();
+    } catch (err) {
+      debug.log('feedback link analytics error (non-blocking):', err);
     }
   }
 

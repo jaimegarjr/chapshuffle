@@ -23,9 +23,23 @@ describe('manifest.json', () => {
   });
 
   test('content script matches youtube.com pages', () => {
-    const cs = manifest.content_scripts[0];
+    const cs = manifest.content_scripts.find((c: { js: string[] }) => c.js.includes('content.js'));
+    expect(cs).toBeDefined();
     expect(cs.matches).toContain('https://www.youtube.com/*');
-    expect(cs.js).toContain('content.js');
+  });
+
+  test('page-world chapter reader runs in the MAIN world at document_start', () => {
+    const cs = manifest.content_scripts.find((c: { js: string[] }) =>
+      c.js.includes('pageChapters.js')
+    );
+    expect(cs).toBeDefined();
+    expect(cs.matches).toContain('https://www.youtube.com/*');
+    expect(cs.world).toBe('MAIN');
+    expect(cs.run_at).toBe('document_start');
+  });
+
+  test('declares the minimum Chrome version required for world: MAIN', () => {
+    expect(manifest.minimum_chrome_version).toBe('111');
   });
 
   test('background service worker is declared', () => {

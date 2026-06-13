@@ -1,20 +1,11 @@
 import { YouTubeChapterWatcher } from '../../src/youtube/YouTubeChapterWatcher';
 import type { Chapter } from '../../src/types';
 
-function addChapterItems(root: Element, count: number, prefix = 'Chapter'): void {
-  const doc = root.ownerDocument;
-  for (let i = 0; i < count; i++) {
-    const item = doc.createElement('ytd-macro-markers-list-item-renderer');
-    const ts = doc.createElement('span');
-    ts.className = 'time-string';
-    ts.textContent = `${i}:00`;
-    const title = doc.createElement('h4');
-    title.className = 'yt-simple-endpoint';
-    title.textContent = `${prefix} ${i + 1}`;
-    item.appendChild(ts);
-    item.appendChild(title);
-    root.appendChild(item);
-  }
+function makeChapters(count: number, prefix = 'Chapter'): Chapter[] {
+  return Array.from({ length: count }, (_, i) => ({
+    title: `${prefix} ${i + 1}`,
+    startSeconds: i * 60,
+  }));
 }
 
 function addPlayerControls(doc: Document): Element {
@@ -32,6 +23,8 @@ function buildWatcher(
     onNavigate: () => void;
     onChaptersReady: (chapters: Chapter[], controlsBar: Element) => void;
     onLivestream: () => void;
+    readChapters: () => Chapter[] | null;
+    requestRefresh: () => void;
   }> = {}
 ): YouTubeChapterWatcher {
   return new YouTubeChapterWatcher(doc, {
@@ -40,6 +33,7 @@ function buildWatcher(
     onNavigate: () => {},
     onChaptersReady: () => {},
     onLivestream: () => {},
+    readChapters: () => null,
     ...overrides,
   });
 }
@@ -57,13 +51,17 @@ describe('YouTubeChapterWatcher', () => {
   test('waits for a stable chapter fingerprint before reporting chapters', () => {
     const controls = addPlayerControls(document);
     const onChaptersReady = jest.fn();
-    const watcher = buildWatcher(document, { onChaptersReady });
+    let chapters: Chapter[] | null = null;
+    const watcher = buildWatcher(document, {
+      onChaptersReady,
+      readChapters: () => chapters,
+    });
 
     watcher.start();
     jest.advanceTimersByTime(500);
     expect(onChaptersReady).not.toHaveBeenCalled();
 
-    addChapterItems(document.body, 5);
+    chapters = makeChapters(5);
     jest.advanceTimersByTime(500);
     expect(onChaptersReady).not.toHaveBeenCalled();
 
@@ -75,21 +73,88 @@ describe('YouTubeChapterWatcher', () => {
     watcher.destroy();
   });
 
+  test('keeps polling until the chapter data arrives', () => {
+    const controls = addPlayerControls(document);
+    const onChaptersReady = jest.fn();
+    let chapters: Chapter[] | null = null;
+    const watcher = buildWatcher(document, {
+      onChaptersReady,
+      readChapters: () => chapters,
+    });
+
+    watcher.start();
+    // Several empty ticks while the page world is still being queried.
+    for (let i = 0; i < 6; i++) {
+      jest.advanceTimersByTime(500);
+    }
+    expect(onChaptersReady).not.toHaveBeenCalled();
+
+    chapters = makeChapters(5);
+    jest.advanceTimersByTime(500);
+    jest.advanceTimersByTime(500);
+
+    expect(onChaptersReady).toHaveBeenCalledTimes(1);
+    expect(onChaptersReady.mock.calls[0][0]).toHaveLength(5);
+    expect(onChaptersReady.mock.calls[0][1]).toBe(controls);
+
+    watcher.destroy();
+  });
+
+  test('stops polling once chapters stay absent past the timeout', () => {
+    addPlayerControls(document);
+    const onChaptersReady = jest.fn();
+    let chapters: Chapter[] | null = null;
+    const watcher = buildWatcher(document, {
+      onChaptersReady,
+      readChapters: () => chapters,
+    });
+
+    watcher.start();
+    // Poll well past the empty-poll budget with no chapters ever appearing.
+    for (let i = 0; i < 40; i++) {
+      jest.advanceTimersByTime(500);
+    }
+    // Chapters that appear after the watcher gave up are ignored (no leak).
+    chapters = makeChapters(5);
+    jest.advanceTimersByTime(500);
+    jest.advanceTimersByTime(500);
+
+    expect(onChaptersReady).not.toHaveBeenCalled();
+
+    watcher.destroy();
+  });
+
+  test('requests a refresh from the chapter source on each poll', () => {
+    addPlayerControls(document);
+    const requestRefresh = jest.fn();
+    const watcher = buildWatcher(document, { requestRefresh });
+
+    watcher.start();
+    jest.advanceTimersByTime(500);
+    jest.advanceTimersByTime(500);
+
+    expect(requestRefresh).toHaveBeenCalledTimes(2);
+
+    watcher.destroy();
+  });
+
   test('restarts polling after YouTube navigation', () => {
     addPlayerControls(document);
-    addChapterItems(document.body, 5, 'A');
+    let chapters: Chapter[] | null = makeChapters(5, 'A');
     const onNavigate = jest.fn();
     const onChaptersReady = jest.fn();
-    const watcher = buildWatcher(document, { onNavigate, onChaptersReady });
+    const watcher = buildWatcher(document, {
+      onNavigate,
+      onChaptersReady,
+      readChapters: () => chapters,
+    });
 
     watcher.start();
     jest.runOnlyPendingTimers();
     jest.runOnlyPendingTimers();
     expect(onChaptersReady.mock.calls[0][0][0]).toEqual({ title: 'A 1', startSeconds: 0 });
 
-    document.body.innerHTML = '';
-    addPlayerControls(document);
-    addChapterItems(document.body, 6, 'B');
+    chapters = makeChapters(6, 'B');
     document.dispatchEvent(new Event('yt-navigate-finish'));
     jest.runOnlyPendingTimers();
     jest.runOnlyPendingTimers();
@@ -102,34 +167,15 @@ describe('YouTubeChapterWatcher', () => {
     watcher.destroy();
   });
 
-  test('uses the last macro marker list as the current chapter root', () => {
-    addPlayerControls(document);
-    const oldList = document.createElement('ytd-macro-markers-list-renderer');
-    const newList = document.createElement('ytd-macro-markers-list-renderer');
-    document.body.appendChild(oldList);
-    document.body.appendChild(newList);
-    addChapterItems(oldList, 5, 'Old');
-    addChapterItems(newList, 6, 'New');
-
-    const onChaptersReady = jest.fn();
-    const watcher = buildWatcher(document, { onChaptersReady });
-
-    watcher.start();
-    jest.runOnlyPendingTimers();
-    jest.runOnlyPendingTimers();
-
-    expect(onChaptersReady).toHaveBeenCalledTimes(1);
-    expect(onChaptersReady.mock.calls[0][0]).toHaveLength(6);
-    expect(onChaptersReady.mock.calls[0][0][0]).toEqual({ title: 'New 1', startSeconds: 0 });
-
-    watcher.destroy();
-  });
-
   test('re-evaluates the current video when the activation threshold changes', () => {
     addPlayerControls(document);
-    addChapterItems(document.body, 4);
+    const chapters = makeChapters(4);
     const onChaptersReady = jest.fn();
-    const watcher = buildWatcher(document, { minChapters: 5, onChaptersReady });
+    const watcher = buildWatcher(document, {
+      minChapters: 5,
+      onChaptersReady,
+      readChapters: () => chapters,
+    });
 
     watcher.start();
     jest.runOnlyPendingTimers();
@@ -153,7 +199,11 @@ describe('YouTubeChapterWatcher', () => {
     document.body.appendChild(liveMarker);
     const onLivestream = jest.fn();
     const onChaptersReady = jest.fn();
-    const watcher = buildWatcher(document, { onLivestream, onChaptersReady });
+    const watcher = buildWatcher(document, {
+      onLivestream,
+      onChaptersReady,
+      readChapters: () => makeChapters(5),
+    });
 
     watcher.start();
     jest.advanceTimersByTime(500);

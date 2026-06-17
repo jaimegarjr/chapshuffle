@@ -15,7 +15,7 @@ test('fresh installation opens onboarding and Try Chap Shuffle replaces it with 
   }
 
   await onboarding.waitForLoadState('domcontentloaded');
-  const consent = onboarding.getByRole('checkbox', { name: 'Share anonymous usage metrics' });
+  const consent = onboarding.getByRole('checkbox', { name: 'Share optional usage metrics' });
   await expect(consent).not.toBeChecked();
 
   await onboarding.getByRole('button', { name: 'Try Chap Shuffle' }).click();

@@ -9,6 +9,8 @@
     "test:e2e": "playwright test",
     "build": "node build.js",
     "build:prod": "node build.js --prod",
+    "build:analytics": "node build.js --prod --analytics",
+    "build:release": "node build.js --release",
     "sync:branding": "node scripts/sync-branding.js",
     "watch": "node build.js --watch",
     "typecheck": "tsc --noEmit",

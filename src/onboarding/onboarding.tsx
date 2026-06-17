@@ -111,17 +111,17 @@ export function OnboardingApp({ navigate }: OnboardingAppProps) {
             <span class="onboarding-card-kicker">Optional</span>
             <h2 id="analytics-heading">Help improve Chap Shuffle</h2>
             <p>
-              Share anonymous feature usage and playback totals. Video titles, chapter names,
+              Share pseudonymous feature usage and playback totals. Video titles, chapter names,
               browsing history, and personal information are never included.
             </p>
           </div>
           <label class="consent-control">
             <span>
-              <strong>Share anonymous usage metrics</strong>
+              <strong>Share optional usage metrics</strong>
               <small>You can change this any time from the extension menu.</small>
             </span>
             <input
-              aria-label="Share anonymous usage metrics"
+              aria-label="Share optional usage metrics"
               type="checkbox"
               checked={consent}
               disabled={!ready || saving}

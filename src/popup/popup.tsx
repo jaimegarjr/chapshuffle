@@ -114,8 +114,8 @@ export function App() {
         <aside class="analytics-notice" aria-labelledby="analytics-notice-title">
           <strong id="analytics-notice-title">Optional usage analytics</strong>
           <p>
-            ChapShuffle can share anonymous feature usage to help guide improvements. It stays off
-            unless you choose to enable it.
+            ChapShuffle can share pseudonymous feature usage to help guide improvements. It stays
+            off unless you choose to enable it.
           </p>
           <div class="analytics-notice-actions">
             <button onClick={() => void dismissAnalyticsNotice(false)}>Not now</button>
@@ -207,7 +207,7 @@ export function App() {
           </h2>
           <div class="row">
             <div class="label-group">
-              <span class="label">Share anonymous usage metrics</span>
+              <span class="label">Share optional usage metrics</span>
               <span class="sublabel">
                 No video titles or personal data — helps improve ChapShuffle
               </span>
@@ -215,7 +215,7 @@ export function App() {
             <label class="switch">
               <input
                 ref={consentInputRef}
-                aria-label="Share anonymous usage metrics"
+                aria-label="Share optional usage metrics"
                 type="checkbox"
                 checked={consent}
                 onChange={handleConsentToggle}

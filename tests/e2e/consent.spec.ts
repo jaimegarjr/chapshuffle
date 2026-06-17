@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, openChapteredVideo, resetExtensionStorage, test } from './fixtures';
 
 const extensionPath = path.resolve(__dirname, '../../dist');
-const CONSENT_LABEL = 'Share anonymous usage metrics';
+const CONSENT_LABEL = 'Share optional usage metrics';
 const INSTALL_ID_KEY = 'chapshuffleInstallId';
 
 interface CapturedRequest {
